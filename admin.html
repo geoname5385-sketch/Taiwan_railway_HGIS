@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>古今鐵道營業線 HGIS - 管理後台</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"/>
+    
+    <style>
+        body { display: flex; flex-direction: column; height: 100vh; margin: 0; font-family: "Microsoft JhengHei", sans-serif; background: #f4f4f4; }
+        header { background: #1a237e; color: #fff; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        main { display: flex; flex: 1; overflow: hidden; }
+        #sidebar { width: 420px; display: flex; flex-direction: column; border-right: 1px solid #ccc; background: #fff; padding: 15px; box-sizing: border-box; }
+        #map-container { flex: 1; position: relative; }
+        #map { height: 100%; width: 100%; }
+        
+        textarea { flex: 1; font-family: monospace; font-size: 11px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; background: #fafafa; resize: none; margin-top: 10px; }
+        .controls { margin-top: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        button { padding: 10px; cursor: pointer; border: none; border-radius: 4px; background: #3949ab; color: white; font-weight: bold; font-size: 13px; }
+        button:hover { background: #283593; }
+        .btn-save { background: #2e7d32; grid-column: span 2; margin-top: 5px; font-size: 15px; }
+        
+        .status-box { font-size: 12px; margin-top: 8px; padding: 10px; border-radius: 4px; background: #e8eaf6; color: #1a237e; border-left: 4px solid #1a237e; line-height: 1.4; }
+        .file-input-label { 
+            display: block; background: #fffde7; padding: 15px; text-align: center; 
+            border: 2px dashed #fbc02d; cursor: pointer; margin-top: 5px; 
+            font-size: 14px; color: #827717; font-weight: bold; border-radius: 8px;
+        }
+        .file-input-label:hover { background: #fff9c4; }
+        h3 { margin: 0 0 10px 0; color: #1a237e; border-bottom: 2px solid #3949ab; padding-bottom: 5px; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div style="font-size: 1.2em; font-weight: bold;">古今鐵道營業線 HGIS - 專業編修後台</div>
+    <div id="top-status" style="font-size: 0.9em; opacity: 0.8;">系統已準備就緒</div>
+</header>
+
+<main>
+    <div id="sidebar">
+        <h3>資料維護與融合面板</h3>
+        
+        <label class="file-input-label">
+            📁 匯入外部資料 (自動融合為一線一要素)
+            <input type="file" id="fileInput" accept=".json,.geojson" style="display:none;">
+        </label>
+
+        <textarea id="json-input" spellcheck="false" placeholder="JSON 原始碼將顯示於此..."></textarea>
+        
+        <div class="controls">
+            <button onclick="syncToMap()">同步文字至地圖</button>
+            <button onclick="formatJSON()">美化 JSON 格式</button>
+            <button class="btn-save" onclick="downloadJSON()">💾 下載最終 data.json</button>
+        </div>
+        
+        <div class="status-box" id="log-msg">
+            💡 系統提示：<br>1. 繪圖或匯入後，請點擊下載。<br>2. 匯入同名路線會自動合併座標。
+        </div>
+    </div>
+    <div id="map-container">
+        <div id="map"></div>
+    </div>
+</main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+
+<script>
+    // 1. 初始化地圖
+    var map = L.map('map').setView([22.95, 120.25], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '©OSM' }).addTo(map);
+
+    var drawnItems = new L.FeatureGroup();
+    map.addLayer(drawnItems);
+
+    // 2. 設定繪圖工具
+    var drawControl = new L.Control.Draw({
+        edit: { featureGroup: drawnItems },
+        draw: { 
+            polyline: { shapeOptions: { color: '#ff3300', weight: 5 } }, 
+            marker: true, 
+            polygon: false, rectangle: false, circle: false, circlemarker: false 
+        }
+    });
+    map.addControl(drawControl);
+
+    var textarea = document.getElementById('json-input');
+    var logMsg = document.getElementById('log-msg');
+    var fileInput = document.getElementById('fileInput');
+
+    // 符合新版公認標準的標籤清單
+    const STANDARD_LABELS = [
+        "name", "description", "last_updated", "source", 
+        "status", "period", "comment", "altitudeMode", 
+        "tessellate", "extrude", "visibility"
+    ];
+
+    // 座標淨化：移除 0.0 (Z軸)
+    function cleanCoords(c) {
+        if (Array.isArray(c[0])) return c.map(cleanCoords);
+        return [c[0], c[1]];
+    }
+
+    // 核心匯入與融合邏輯
+    fileInput.addEventListener('change', function(e) {
+        var file = e.target.files[0];
+        if (!file) return;
+
+        var reader = new FileReader();
+        reader.onload = function(event) {
+            try {
+                var importedData = JSON.parse(event.target.result);
+                var currentData = JSON.parse(textarea.value || '{"license":"CC0-1.0","data":{"type":"FeatureCollection","features":[]}}');
+
+                var incoming = [];
+                if (importedData.features) incoming = importedData.features;
+                else if (importedData.data && importedData.data.features) incoming = importedData.data.features;
+                else if (importedData.type === "Feature") incoming = [importedData];
+
+                // 彈窗詢問統一名稱
+                let firstFeatName = incoming[0].properties.name || incoming[0].properties.Name || "";
+                let finalName = prompt(`偵測到 ${incoming.length} 個片段。\n請輸入此鐵道營業線的統一名稱：`, firstFeatName);
+                
+                if (!finalName) {
+                    alert("匯入取消：必須輸入名稱以確保資料整潔。");
+                    return;
+                }
+
+                // 提取並淨化座標
+                let newCoordsBucket = [];
+                incoming.forEach(f => {
+                    let coords = cleanCoords(f.geometry.coordinates);
+                    if (f.geometry.type === "LineString") newCoordsBucket.push(coords);
+                    else if (f.geometry.type === "MultiLineString") newCoordsBucket.push(...coords);
+                });
+
+                // 尋找是否已有同名要素
+                let existingFeat = currentData.data.features.find(f => f.properties.name === finalName);
+
+                if (existingFeat) {
+                    existingFeat.geometry.coordinates.push(...newCoordsBucket);
+                    logMsg.innerHTML = `✅ 已將新座標融合至現有路線：<b>${finalName}</b>`;
+                } else {
+                    let newFeat = {
+                        "type": "Feature",
+                        "properties": {
+                            "name": finalName,
+                            "description": { "zh": "在此輸入中文歷史描述", "en": "Input English description" },
+                            "last_updated": new Date().toISOString().split('T')[0],
+                            "source": "Manual Import",
+                            "status": "考據中",
+                            "period": "未知",
+                            "comment": null,
+                            "altitudeMode": "clampToGround",
+                            "tessellate": -1,
+                            "extrude": 0,
+                            "visibility": -1
+                        },
+                        "geometry": { "type": "MultiLineString", "coordinates": newCoordsBucket }
+                    };
+                    currentData.data.features.push(newFeat);
+                    logMsg.innerHTML = `✅ 成功建立全新單一要素：<b>${finalName}</b>`;
+                }
+
+                textarea.value = JSON.stringify(currentData, null, 4);
+                syncToMap();
+                fileInput.value = "";
+            } catch (err) {
+                alert("解析失敗：" + err.message);
+            }
+        };
+        reader.readAsText(file);
+    });
+
+    // 將地圖上的變動更新回 JSON 文本
+    function updateJSONFromMap() {
+        var collection = drawnItems.toGeoJSON();
+        var currentData = JSON.parse(textarea.value || '{"license":"CC0-1.0","data":{"type":"FeatureCollection","features":[]}}');
+        
+        collection.features.forEach(f => {
+            if (!f.properties.name) {
+                f.properties.name = "手繪新路線";
+                f.properties.last_updated = new Date().toISOString().split('T')[0];
+                f.properties.description = { "zh": "", "en": "" };
+            }
+        });
+        
+        currentData.data = collection;
+        textarea.value = JSON.stringify(currentData, null, 4);
+    }
+
+    map.on(L.Draw.Event.CREATED, function (e) {
+        drawnItems.addLayer(e.layer);
+        updateJSONFromMap();
+    });
+    map.on(L.Draw.Event.EDITED, updateJSONFromMap);
+    map.on(L.Draw.Event.DELETED, updateJSONFromMap);
+
+    function syncToMap() {
+        try {
+            var raw = JSON.parse(textarea.value);
+            drawnItems.clearLayers();
+            L.geoJSON(raw.data, {
+                onEachFeature: function(f, l) {
+                    drawnItems.addLayer(l);
+                    l.bindPopup(`<b>${f.properties.name}</b>`);
+                }
+            });
+            if (drawnItems.getLayers().length > 0) map.fitBounds(drawnItems.getBounds());
+        } catch (e) {
+            console.error("同步失敗", e);
+        }
+    }
+
+    // 初始化自動載入
+    fetch('data.json').then(res => res.json()).then(data => {
+        textarea.value = JSON.stringify(data, null, 4);
+        syncToMap();
+        document.getElementById('top-status').innerText = "✅ 已成功載入現有 data.json";
+    }).catch(() => {
+        textarea.value = JSON.stringify({"license":"CC0-1.0","data":{"type":"FeatureCollection","features":[]}}, null, 4);
+        document.getElementById('top-status').innerText = "💡 尚未偵測到檔案，請開始建立資料。";
+    });
+
+    function downloadJSON() {
+        var blob = new Blob([textarea.value], {type: "application/json"});
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = "data.json";
+        a.click();
+        logMsg.innerHTML = "💾 <b>檔案已下載</b>，請覆蓋資料夾中的舊檔。";
+    }
+
+    function formatJSON() {
+        try { textarea.value = JSON.stringify(JSON.parse(textarea.value), null, 4); } catch(e) {}
+    }
+</script>
+
+</body>
+</html>

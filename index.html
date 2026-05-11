@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>古今鐵道營業線 HGIS 查詢</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body { padding: 0; margin: 0; font-family: "Microsoft JhengHei", "PingFang TC", sans-serif; background: #f8f9fa; }
+        html, body, #map { height: 100%; width: 100vw; }
+        #system-title { position: absolute; top: 15px; right: 15px; z-index: 1000; background: rgba(26, 35, 126, 0.9); color: white; padding: 8px 20px; border-radius: 25px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); pointer-events: none; letter-spacing: 1px; }
+        #custom-search-box { position: absolute; top: 15px; left: 15px; z-index: 1000; width: 320px; }
+        .search-bar { background: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border-radius: 12px; display: flex; align-items: center; padding: 5px 15px; }
+        .search-bar input { border: none; outline: none; flex-grow: 1; font-size: 16px; padding: 12px 0; color: #333; background: transparent; }
+        
+        /* ⓧ 按鈕樣式 */
+        #clearSearch { cursor: pointer; color: #ccc; font-size: 22px; padding: 0 5px; display: none; line-height: 1; transition: color 0.2s; }
+        #clearSearch:hover { color: #1a237e; }
+
+        .search-dropdown { background: #fff; box-shadow: 0 8px 24px rgba(0,0,0,0.15); border-radius: 12px; margin-top: 10px; max-height: 400px; overflow-y: auto; display: none; padding: 8px 0; list-style: none; }
+        .search-dropdown li { padding: 12px 20px; border-bottom: 1px solid #f0f0f0; font-size: 15px; cursor: pointer; }
+        .search-dropdown li:hover { background-color: #e8eaf6; color: #1a237e; font-weight: bold; }
+        .leaflet-control-attribution { display: none !important; }
+        .custom-popup { min-width: 220px; line-height: 1.6; }
+        .popup-title { color: #1a237e; border-bottom: 2px solid #1a237e; margin-bottom: 10px; font-weight: bold; font-size: 18px; padding-bottom: 5px; }
+        .popup-info { font-size: 14px; color: #444; }
+        .popup-label { font-weight: bold; color: #666; margin-right: 5px; }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div id="system-title">古今鐵道營業線 HGIS 查詢</div>
+    <div id="custom-search-box">
+        <div class="search-bar">
+            <input type="text" id="searchInput" placeholder="點擊顯示清單..." autocomplete="off">
+            <div id="clearSearch">&times;</div>
+        </div>
+        <ul id="searchList" class="search-dropdown"></ul>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
+        var sinica1904 = L.tileLayer('https://gis.sinica.edu.tw/tileserver/file-exists.php?img=JM20K_1904-jpg-{z}-{x}-{y}', { maxZoom: 18 });
+        var map = L.map('map', { zoomControl: false, layers: [osm] }).setView([22.95, 120.25], 12);
+        L.control.layers({"現代地圖": osm, "1904 臺灣堡圖": sinica1904}, null, { position: 'bottomright' }).addTo(map);
+
+        var searchData = [];
+        
+        function getLatinPart(str) {
+            var match = str.match(/[a-zA-Z].*/);
+            return match ? match[0].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') : str;
+        }
+
+        function normalizeString(str) { return str ? str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') : ''; }
+
+        fetch('data.json').then(res => res.json()).then(rawData => {
+            L.geoJSON(rawData.data, {
+                style: function() { return { color: "#1a237e", weight: 5, opacity: 0.7 }; },
+                onEachFeature: function (f, l) {
+                    var name = f.properties.name || "未命名線路";
+                    var zhDesc = f.properties.description?.zh || "暫無歷史描述。";
+                    var updateDate = f.properties.last_updated || "未知";
+                    var source = f.properties.source || "考據中";
+
+                    var popupContent = `
+                        <div class="custom-popup">
+                            <div class="popup-title">${name}</div>
+                            <div class="popup-info">
+                                <span class="popup-label">歷史簡介:</span> ${zhDesc}<br>
+                                <span class="popup-label">資料來源:</span> ${source}<br>
+                                <span class="popup-label">最後更新:</span> ${updateDate}
+                            </div>
+                        </div>
+                    `;
+                    l.bindPopup(popupContent);
+                    searchData.push({ name: name, layer: l });
+                }
+            }).addTo(map);
+
+            var input = document.getElementById('searchInput'), dropdown = document.getElementById('searchList');
+            var clearBtn = document.getElementById('clearSearch');
+
+            function renderList(val) {
+                searchData.sort((a, b) => getLatinPart(a.name).localeCompare(getLatinPart(b.name), 'en'));
+                dropdown.innerHTML = '';
+                var has = false;
+                var cleanVal = normalizeString(val);
+
+                // 控制清除按鈕的顯示
+                clearBtn.style.display = val.length > 0 ? 'block' : 'none';
+
+                searchData.forEach(item => {
+                    if (cleanVal === '' || normalizeString(item.name).includes(cleanVal)) {
+                        has = true;
+                        var li = document.createElement('li');
+                        li.textContent = item.name;
+                        li.onclick = function() {
+                            item.layer.getBounds ? map.fitBounds(item.layer.getBounds(), { padding: [50, 50] }) : map.setView(item.layer.getLatLng(), 15);
+                            item.layer.openPopup(); dropdown.style.display = 'none'; input.value = item.name;
+                            clearBtn.style.display = 'block';
+                        };
+                        dropdown.appendChild(li);
+                    }
+                });
+                dropdown.style.display = has ? 'block' : 'none';
+            }
+
+            // 清除按鈕點擊事件
+            clearBtn.onclick = function() {
+                input.value = '';
+                this.style.display = 'none';
+                renderList('');
+                input.focus();
+            };
+
+            input.onfocus = input.onclick = input.oninput = function() { renderList(this.value); };
+            map.on('click', () => dropdown.style.display = 'none');
+        });
+    </script>
+</body>
+</html>

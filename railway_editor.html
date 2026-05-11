@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>HGIS 鐵道專家編輯器 3.4 (微調與刪除版)</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        :root { --primary: #1a237e; --bg: #f0f2f5; }
+        body { display: flex; margin: 0; font-family: "Microsoft JhengHei", sans-serif; height: 100vh; background: var(--bg); }
+        #map { flex: 1; z-index: 1; }
+        #sidebar { width: 420px; background: white; display: flex; flex-direction: column; box-shadow: -2px 0 15px rgba(0,0,0,0.2); z-index: 2; }
+        .header { padding: 20px; background: var(--primary); color: white; display: flex; justify-content: space-between; align-items: center; }
+        .header h3 { margin: 0; font-size: 18px; }
+        .search-container { padding: 15px; background: #e8eaf6; border-bottom: 1px solid #c5cae9; position: relative; }
+        #lineSearch { width: 100%; padding: 10px 30px 10px 10px; border-radius: 8px; border: 1px solid #9fa8da; box-sizing: border-box; font-size: 14px; }
+        #clearSearch { position: absolute; right: 25px; top: 25px; cursor: pointer; color: #999; font-size: 18px; display: none; line-height: 1; }
+        #clearSearch:hover { color: var(--primary); font-weight: bold; }
+        #searchDropdown { position: absolute; top: 60px; left: 15px; right: 15px; background: white; border: 1px solid #ccc; max-height: 350px; overflow-y: auto; display: none; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.1); list-style: none; padding: 0; margin: 0; border-radius: 0 0 8px 8px; }
+        #searchDropdown li { padding: 10px 15px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 14px; display: flex; justify-content: space-between; align-items: center; }
+        #searchDropdown li:hover { background: #f1f3f9; border-left: 4px solid var(--primary); }
+        .add-btn { background: #1a237e; color: white; border: none; border-radius: 4px; padding: 2px 8px; font-size: 16px; cursor: pointer; }
+        .load-all-btn { background: #283593; color: white; width: 100%; padding: 10px; border: none; cursor: pointer; font-weight: bold; border-bottom: 2px solid #1a237e; }
+        
+        .editor-zone { flex: 1; overflow-y: auto; padding: 20px; }
+        .segment-card { background: #f8f9fa; border: 1px solid #dee2e6; border-left: 5px solid var(--primary); padding: 15px; margin-bottom: 15px; border-radius: 6px; position: relative; }
+        .segment-card h4 { margin: 0 0 10px 0; color: var(--primary); font-size: 14px; display: flex; align-items: center; }
+        .seg-checkbox { margin-right: 8px; transform: scale(1.2); cursor: pointer; }
+        input[type="date"], input[type="text"] { width: 100%; padding: 7px; margin-bottom: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        
+        /* 按鈕樣式 */
+        .btn-sm { background: #e0e0e0; border: none; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; margin-left: 5px; }
+        .btn-sm:hover { background: #bdbdbd; }
+        .btn-danger { background: #ffebee; color: #c62828; border: 1px solid #ef9a9a; }
+        .btn-danger:hover { background: #ffcdd2; }
+
+        .footer { padding: 15px; background: #eee; border-top: 1px solid #ddd; }
+        .btn { width: 100%; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 14px; margin-bottom: 8px; }
+        .btn-merge { background: #ff9800; color: white; }
+        .btn-save { background: #2e7d32; color: white; margin-bottom: 0; }
+        
+        /* 節點圓點 */
+        .node-icon-inner { width: 12px; height: 12px; background: #2196F3; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 1px 4px rgba(0,0,0,0.4); }
+        .node-icon-inner:hover { transform: scale(1.3); background: #e65100; transition: 0.1s; }
+        .endpoint-icon-inner { width: 10px; height: 10px; background: #666; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 1px 4px rgba(0,0,0,0.4); }
+        .endpoint-icon-inner:hover { transform: scale(1.3); background: #e65100; transition: 0.1s; }
+    </style>
+</head>
+<body>
+<div id="map"></div>
+<div id="sidebar">
+    <div class="header">
+        <h3>鐵道編輯器 3.4</h3>
+        <button style="background:#ff9800; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;" onclick="clearEditor()">💾 暫存並清空</button>
+    </div>
+    <div class="search-container">
+        <input type="text" id="lineSearch" placeholder="🔍 點擊顯示並累加路線..." autocomplete="off">
+        <div id="clearSearch">&times;</div>
+        <ul id="searchDropdown"></ul>
+    </div>
+    <div class="editor-zone" id="editorZone">
+        <div style="text-align:center; color:#999; margin-top:100px;">載入中...</div>
+    </div>
+    <div class="footer">
+        <button class="btn btn-merge" onclick="mergeSelected()">🔗 合併勾選的區段</button>
+        <button class="btn btn-save" onclick="exportFullJSON()">📥 匯出完整 data.json</button>
+        <div style="font-size: 11px; color: #666; margin-top: 8px; text-align: center; line-height: 1.4;">
+            💡 <b>右鍵</b>點擊地圖上的節點可刪除該點。<br>卡片上的「刪除」會將整段路線永久丟棄。
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    var map = L.map('map').setView([22.95, 120.25], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { opacity: 0.6 }).addTo(map);
+
+    var backgroundFeatures = [], currentEditingSegments = [], editCounter = 1;
+    var editingLayerGroup = L.layerGroup().addTo(map), nodesLayerGroup = L.layerGroup().addTo(map);
+
+    function getNewUid() { return editCounter++; }
+
+    fetch('data.json').then(res => res.json()).then(rawData => {
+        const features = rawData.data?.features || rawData.features || [];
+        features.forEach(f => {
+            if (!f.geometry) return;
+            let feat = JSON.parse(JSON.stringify(f));
+            feat.properties._uid = getNewUid();
+            backgroundFeatures.push(feat);
+        });
+        document.getElementById('editorZone').innerHTML = `<div style="text-align:center; color:#2e7d32; font-weight:bold; margin-top:100px;">✅ 成功載入 ${backgroundFeatures.length} 條原始區段</div>`;
+        initSearch();
+    });
+
+    function initSearch() {
+        var input = document.getElementById('lineSearch');
+        var list = document.getElementById('searchDropdown');
+        var clearBtn = document.getElementById('clearSearch');
+
+        function renderList(val) {
+            val = val.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            clearBtn.style.display = val ? "block" : "none";
+            list.innerHTML = "";
+            
+            let matches = backgroundFeatures.filter(f => {
+                let cleanFeatName = (f.properties?.name || "").toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                return val === "" || cleanFeatName.includes(val);
+            });
+
+            if (matches.length > 0) {
+                if (val !== "" && matches.length > 1) {
+                    let btn = document.createElement('button');
+                    btn.className = 'load-all-btn';
+                    btn.textContent = `🚀 將這 ${matches.length} 筆結果載入編輯區`;
+                    btn.onclick = () => { 
+                        matches.forEach(m => addLineByUid(m.properties._uid)); 
+                        list.style.display = "none"; input.value = ""; clearBtn.style.display = "none"; 
+                    };
+                    list.appendChild(btn);
+                }
+                matches.forEach(feat => {
+                    let li = document.createElement('li');
+                    li.innerHTML = `<span>${feat.properties.name}</span> <button class="add-btn">＋</button>`;
+                    li.onclick = (e) => { 
+                        e.stopPropagation();
+                        addLineByUid(feat.properties._uid); 
+                        list.style.display = "none"; input.value = ""; clearBtn.style.display = "none"; 
+                    };
+                    list.appendChild(li);
+                });
+                list.style.display = "block";
+            } else {
+                list.style.display = "none";
+            }
+        }
+
+        input.onfocus = input.onclick = input.oninput = function() { renderList(this.value); };
+        clearBtn.onclick = function() { input.value = ""; this.style.display = "none"; renderList(""); input.focus(); };
+        document.onclick = function(e) { if (e.target !== input && e.target !== clearBtn && !list.contains(e.target)) list.style.display = "none"; };
+    }
+
+    function addLineByUid(uid) {
+        let idx = backgroundFeatures.findIndex(f => f.properties._uid === uid);
+        if (idx > -1) { currentEditingSegments.push(backgroundFeatures.splice(idx, 1)[0]); renderEditor(); }
+    }
+
+    function clearEditor() { 
+        if(currentEditingSegments.length > 0) {
+            backgroundFeatures.push(...currentEditingSegments); 
+            currentEditingSegments = []; 
+            renderEditor(); 
+            document.getElementById('editorZone').innerHTML = `<div style="text-align:center; color:#2e7d32; font-weight:bold; margin-top:100px;">✅ 編輯結果已暫存回背景</div>`;
+        }
+    }
+
+    function renderEditor() {
+        var zone = document.getElementById('editorZone');
+        zone.innerHTML = ""; editingLayerGroup.clearLayers(); nodesLayerGroup.clearLayers();
+        if (currentEditingSegments.length === 0) return;
+
+        currentEditingSegments.forEach((seg, idx) => {
+            let polylineLayers = [];
+            let layer = L.geoJSON(seg, { 
+                style: { color: "#1a237e", weight: 6, opacity: 0.8, lineCap: 'round' },
+                onEachFeature: (f, l) => { polylineLayers.push(l); }
+            }).addTo(editingLayerGroup);
+
+            let geometryType = seg.geometry.type;
+            let coordSets = geometryType === 'LineString' ? [seg.geometry.coordinates] : seg.geometry.coordinates;
+
+            coordSets.forEach((coords, setIdx) => {
+                coords.forEach((coord, coordIdx) => {
+                    let isEndpoint = (coordIdx === 0 || coordIdx === coords.length - 1);
+                    let customIcon = L.divIcon({ className: 'custom-drag-node', html: `<div class="${isEndpoint?'endpoint':'node'}-icon-inner"></div>`, iconSize: [16, 16], iconAnchor: [8, 8] });
+                    let marker = L.marker([coord[1], coord[0]], { icon: customIcon, draggable: true }).addTo(nodesLayerGroup);
+
+                    // 依據是否為端點提供不同的 Tooltip
+                    if (!isEndpoint && geometryType === 'LineString') {
+                        marker.bindTooltip("左鍵：切割路線<br>右鍵：刪除節點<br>按住：拖曳微調");
+                        marker.on('click', (e) => { L.DomEvent.stopPropagation(e); splitLineAtIdx(idx, coordIdx); });
+                    } else {
+                        marker.bindTooltip("右鍵：刪除節點<br>按住：拖曳微調");
+                    }
+
+                    // --- 核心新功能：右鍵刪除節點 ---
+                    marker.on('contextmenu', function(e) {
+                        L.DomEvent.stopPropagation(e);
+                        // 防呆機制：一條線最少要有兩個點才能畫出來
+                        if (coords.length <= 2) {
+                            alert("這條線段只剩下 2 個節點，無法再刪除了！\\n如果不想要這段路線，請點擊右側卡片的「🗑️ 刪除」。");
+                            return;
+                        }
+                        coords.splice(coordIdx, 1); // 拔除該座標
+                        renderEditor(); // 重新渲染畫面以套用更改
+                    });
+
+                    // 拖曳微調功能
+                    marker.on('drag', function(e) {
+                        coords[coordIdx] = [e.latlng.lng, e.latlng.lat];
+                        if (geometryType === 'LineString') {
+                            polylineLayers[0].setLatLngs(coords.map(c => [c[1], c[0]]));
+                        } else {
+                            polylineLayers[0].setLatLngs(coordSets.map(set => set.map(c => [c[1], c[0]])));
+                        }
+                    });
+                });
+            });
+
+            let card = document.createElement('div');
+            card.className = 'segment-card';
+            card.onmouseenter = () => layer.setStyle({ color: '#e65100', weight: 10 });
+            card.onmouseleave = () => layer.setStyle({ color: '#1a237e', weight: 6 });
+            
+            card.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <h4><input type="checkbox" class="seg-checkbox" value="${idx}"> ${seg.properties.name}</h4>
+                    <div>
+                        ${geometryType === 'MultiLineString' ? `<button class="btn-sm" onclick="explodeSeg(${idx})">✂️ 拆解</button>` : ''}
+                        <button class="btn-sm btn-danger" onclick="deleteSegment(${idx})">🗑️ 刪除</button>
+                    </div>
+                </div>
+                <label>名稱</label><input type="text" value="${seg.properties.name}" oninput="currentEditingSegments[${idx}].properties.name=this.value">
+                <div style="display:flex; gap:10px;">
+                    <div style="flex:1"><label>通車</label><input type="date" value="${formatDate(seg.properties.opened)}" onchange="currentEditingSegments[${idx}].properties.opened=this.value"></div>
+                    <div style="flex:1"><label>廢止</label><input type="date" value="${formatDate(seg.properties.closed)}" onchange="currentEditingSegments[${idx}].properties.closed=this.value"></div>
+                </div>
+            `;
+            zone.appendChild(card);
+        });
+        
+        // 只有首次載入時自動縮放
+        if (!window.hasFitted) { map.fitBounds(editingLayerGroup.getBounds(), { padding: [40, 40] }); window.hasFitted = true; }
+    }
+
+    // --- 核心新功能：完全刪除整段線 ---
+    function deleteSegment(idx) {
+        if(confirm("確定要徹底刪除這段路線嗎？\n(刪除後匯出將不再包含此資料)")) {
+            currentEditingSegments.splice(idx, 1);
+            renderEditor();
+        }
+    }
+
+    function explodeSeg(idx) {
+        let seg = currentEditingSegments[idx];
+        let newFeatures = seg.geometry.coordinates.map((c, i) => {
+            let f = JSON.parse(JSON.stringify(seg));
+            f.geometry.type = 'LineString'; f.geometry.coordinates = c;
+            f.properties.name += ` (段 ${i+1})`; f.properties._uid = getNewUid();
+            return f;
+        });
+        currentEditingSegments.splice(idx, 1, ...newFeatures); renderEditor();
+    }
+
+    function mergeSelected() {
+        let indices = Array.from(document.querySelectorAll('.seg-checkbox:checked')).map(cb => parseInt(cb.value)).sort((a, b) => b - a);
+        if (indices.length < 2) { alert("請至少勾選 2 個區段"); return; }
+        let newCoords = [], baseProps = null;
+        indices.forEach(idx => {
+            let seg = currentEditingSegments[idx];
+            if (!baseProps) baseProps = JSON.parse(JSON.stringify(seg.properties));
+            if (seg.geometry.type === 'LineString') newCoords.push(seg.geometry.coordinates);
+            else newCoords.push(...seg.geometry.coordinates);
+            currentEditingSegments.splice(idx, 1);
+        });
+        baseProps.name = baseProps.name.replace(/\s*\((.*?)\)/g, ''); // 移除舊有後綴
+        baseProps._uid = getNewUid();
+        currentEditingSegments.unshift({ type: "Feature", properties: baseProps, geometry: { type: "MultiLineString", coordinates: newCoords } });
+        renderEditor();
+    }
+
+    function splitLineAtIdx(segIdx, splitIdx) {
+        let seg = currentEditingSegments[segIdx];
+        let coords = seg.geometry.coordinates;
+        let p1 = JSON.parse(JSON.stringify(seg)), p2 = JSON.parse(JSON.stringify(seg));
+        p1.geometry.coordinates = coords.slice(0, splitIdx + 1); p1.properties._uid = getNewUid();
+        p2.geometry.coordinates = coords.slice(splitIdx); p2.properties._uid = getNewUid();
+        currentEditingSegments.splice(segIdx, 1, p1, p2); renderEditor();
+    }
+
+    function formatDate(d) { if (!d) return ""; return d.length === 4 ? d + "-01-01" : d; }
+
+    function exportFullJSON() {
+        let all = [...backgroundFeatures, ...currentEditingSegments].map(f => {
+            let res = JSON.parse(JSON.stringify(f)); delete res.properties._uid; return res;
+        });
+        let blob = new Blob([JSON.stringify({ data: { type: "FeatureCollection", features: all } }, null, 2)], {type: "application/json"});
+        let a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = "data.json"; a.click();
+    }
+</script>
+</body>
+</html>

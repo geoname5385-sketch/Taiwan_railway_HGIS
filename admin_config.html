@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>地圖配置生成器 - 古今鐵道 HGIS</title>
+    <meta charset="utf-8" />
+    <style>
+        body { font-family: "Microsoft JhengHei", sans-serif; background: #f0f2f5; padding: 40px; color: #333; }
+        .container { max-width: 900px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        h2 { color: #1a237e; border-bottom: 3px solid #1a237e; padding-bottom: 10px; }
+        .layer-group { margin: 20px 0; }
+        .layer-item { 
+            display: flex; align-items: center; padding: 12px; border: 1px solid #eee; 
+            margin-bottom: 8px; border-radius: 6px; transition: 0.2s;
+        }
+        .layer-item:hover { background: #f1f3f9; border-color: #3949ab; }
+        .layer-item input { margin-right: 15px; transform: scale(1.2); }
+        .layer-info { flex-grow: 1; }
+        .layer-title { font-weight: bold; display: block; }
+        .layer-id { font-size: 12px; color: #666; font-family: monospace; }
+        
+        .actions { margin-top: 30px; text-align: center; border-top: 1px solid #eee; padding-top: 20px; }
+        .btn-build { 
+            background: #2e7d32; color: white; border: none; padding: 15px 40px; 
+            font-size: 18px; font-weight: bold; border-radius: 30px; cursor: pointer;
+            box-shadow: 0 4px 10px rgba(46, 125, 50, 0.3);
+        }
+        .btn-build:hover { background: #1b5e20; transform: translateY(-2px); }
+        p.note { font-size: 13px; color: #666; line-height: 1.6; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>🗺️ 中研院歷史地圖配置器</h2>
+    <p class="note">勾選您希望在查詢系統中提供的底圖，點擊下方按鈕將自動生成最新版的 <b>index.html</b>。</p>
+
+    <div class="layer-group" id="layer-list">
+        <div class="layer-item">
+            <input type="checkbox" id="layer_osm" checked disabled>
+            <div class="layer-info">
+                <span class="layer-title">現代街道圖 (OpenStreetMap)</span>
+                <span class="layer-id">標準現代地圖 (必選)</span>
+            </div>
+        </div>
+        
+        <div class="layer-item">
+            <input type="checkbox" class="wmts-layer" value="JM20K_1904-jpg" data-name="日治台灣堡圖 (1904)" checked>
+            <div class="layer-info">
+                <span class="layer-title">日治台灣堡圖 (1904)</span>
+                <span class="layer-id">ID: JM20K_1904-jpg | 考據糖鐵最原始路網必備</span>
+            </div>
+        </div>
+
+        <div class="layer-item">
+            <input type="checkbox" class="wmts-layer" value="JM50K_1921-jpg" data-name="日治地形圖 (1921)">
+            <div class="layer-info">
+                <span class="layer-title">日治地形圖 (1921)</span>
+                <span class="layer-id">ID: JM50K_1921-jpg | 昭和初期路網鼎盛期</span>
+            </div>
+        </div>
+
+        <div class="layer-item">
+            <input type="checkbox" class="wmts-layer" value="CityPlan_Tainan_1944-jpg" data-name="美軍台南市圖 (1944)" checked>
+            <div class="layer-info">
+                <span class="layer-title">美軍台南市街圖 (1944)</span>
+                <span class="layer-id">ID: CityPlan_Tainan_1944-jpg | 二戰末期車站細節最精確</span>
+            </div>
+        </div>
+
+        <div class="layer-item">
+            <input type="checkbox" class="wmts-layer" value="Taiwan_1944" data-name="美軍台灣地形圖 (1944)">
+            <div class="layer-info">
+                <span class="layer-title">美軍台灣地形圖 (1944)</span>
+                <span class="layer-id">ID: Taiwan_1944 | 戰時全台路網現況</span>
+            </div>
+        </div>
+
+        <div class="layer-item">
+            <input type="checkbox" class="wmts-layer" value="PHOTO_1945" data-name="美軍航照圖 (1945)">
+            <div class="layer-info">
+                <span class="layer-title">美軍航照影像 (1945)</span>
+                <span class="layer-id">ID: PHOTO_1945 | 實景影像比對</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="actions">
+        <button class="btn-build" onclick="buildIndex()">🚀 生成並下載 index.html</button>
+    </div>
+</div>
+
+<script>
+    function buildIndex() {
+        const selectedLayers = document.querySelectorAll('.wmts-layer:checked');
+        let layersCode = "";
+        let baseMapsCode = '{"現代街道圖": osm';
+
+        selectedLayers.forEach(layer => {
+            const id = layer.value;
+            const name = layer.getAttribute('data-name');
+            const varName = id.replace(/[^a-zA-Z0-9]/g, '_');
+            
+            layersCode += `
+        var ${varName} = L.tileLayer('https://gis.sinica.edu.tw/tileserver/file-exists.php?img=${id}-{z}-{x}-{y}', {
+            attribution: '© 中央研究院',
+            maxZoom: 18
+        });`;
+            
+            baseMapsCode += `, "${name}": ${varName}`;
+        });
+
+        baseMapsCode += "}";
+
+        // 構建完整的 HTML 模板 (包含你之前的搜尋邏輯)
+        const template = `<!DOCTYPE html>
+<html>
+<head>
+    <title>古今鐵道營業線 HGIS 查詢</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body { padding: 0; margin: 0; font-family: "Microsoft JhengHei", sans-serif; background: #f8f9fa; }
+        html, body, #map { height: 100%; width: 100vw; }
+        #system-title { position: absolute; top: 15px; right: 15px; z-index: 1000; background: rgba(26, 35, 126, 0.9); color: white; padding: 8px 20px; border-radius: 25px; font-weight: bold; pointer-events: none; }
+        #custom-search-box { position: absolute; top: 15px; left: 15px; z-index: 1000; width: 320px; }
+        .search-bar { background: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border-radius: 12px; display: flex; align-items: center; padding: 5px 15px; }
+        .search-bar input { border: none; outline: none; flex-grow: 1; font-size: 16px; padding: 12px 0; }
+        .search-dropdown { background: #fff; box-shadow: 0 8px 24px rgba(0,0,0,0.15); border-radius: 12px; margin-top: 10px; max-height: 400px; overflow-y: auto; display: none; padding: 8px 0; list-style: none; }
+        .search-dropdown li { padding: 12px 20px; border-bottom: 1px solid #f0f0f0; cursor: pointer; }
+        .search-dropdown li:hover { background: #e8eaf6; color: #1a237e; }
+        .custom-popup { min-width: 220px; }
+        .popup-title { color: #1a237e; border-bottom: 2px solid #1a237e; font-weight: bold; font-size: 18px; }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div id="system-title">古今鐵道營業線 HGIS 查詢</div>
+    <div id="custom-search-box">
+        <div class="search-bar">
+            <input type="text" id="searchInput" placeholder="點擊顯示清單或搜尋..." autocomplete="off">
+        </div>
+        <ul id="searchList" class="search-dropdown"></ul>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"><\/script>
+    <script>
+        var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OSM' });
+        ${layersCode}
+
+        var map = L.map('map', { zoomControl: false, layers: [osm] }).setView([22.95, 120.25], 12);
+        var baseMaps = ${baseMapsCode};
+
+        L.control.layers(baseMaps, null, { position: 'bottomright' }).addTo(map);
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+        var searchData = [];
+        fetch('data.json').then(res => res.json()).then(rawData => {
+            L.geoJSON(rawData.data, {
+                style: { color: "#1a237e", weight: 5, opacity: 0.7 },
+                onEachFeature: function (f, l) {
+                    var name = f.properties.name || "未命名";
+                    l.bindPopup('<div class="custom-popup"><div class="popup-title">' + name + '</div>' + (f.properties.description?.zh || "") + '</div>');
+                    searchData.push({ name: name, layer: l });
+                }
+            }).addTo(map);
+
+            var input = document.getElementById('searchInput');
+            var dropdown = document.getElementById('searchList');
+
+            function renderList(txt) {
+                dropdown.innerHTML = '';
+                var has = false;
+                searchData.forEach(item => {
+                    if (txt === '' || item.name.toLowerCase().includes(txt.toLowerCase())) {
+                        has = true;
+                        var li = document.createElement('li');
+                        li.textContent = item.name;
+                        li.onclick = function() {
+                            if (item.layer.getBounds) map.fitBounds(item.layer.getBounds());
+                            item.layer.openPopup();
+                            dropdown.style.display = 'none';
+                        };
+                        dropdown.appendChild(li);
+                    }
+                });
+                dropdown.style.display = has ? 'block' : 'none';
+            }
+            input.onfocus = input.onclick = input.oninput = function() { renderList(this.value); };
+            map.onclick = function() { dropdown.style.display = 'none'; };
+        });
+    <\/script>
+</body>
+</html>`;
+
+        const blob = new Blob([template], {type: "text/html"});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = "index.html";
+        a.click();
+    }
+</script>
+</body>
+</html>

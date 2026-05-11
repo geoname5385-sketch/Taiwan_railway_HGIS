@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>屬性維護 - 古今鐵道營業線 HGIS</title>
+    <meta charset="utf-8" />
+    <style>
+        body { font-family: "Microsoft JhengHei", "Segoe UI", sans-serif; background: #eceff1; margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 1450px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        header { border-bottom: 3px solid #1a237e; padding-bottom: 15px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        h2 { color: #1a237e; margin: 0; font-size: 24px; letter-spacing: 1px; }
+        
+        .toolbar { background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 15px; align-items: center; border: 1px solid #dee2e6; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; table-layout: fixed; }
+        th { background: #1a237e; color: white; padding: 12px; text-align: left; position: sticky; top: 0; z-index: 10; font-size: 14px; }
+        td { border-bottom: 1px solid #eee; padding: 12px 10px; vertical-align: top; }
+        tr:hover { background: #f1f3f9; }
+        
+        input[type="text"], textarea { 
+            width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;
+            font-family: inherit; font-size: 13px;
+        }
+        textarea { height: 70px; resize: vertical; line-height: 1.5; }
+        input:focus, textarea:focus { border-color: #3949ab; outline: none; background: #fffde7; box-shadow: 0 0 5px rgba(57,73,171,0.2); }
+
+        .btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; font-size: 13px; }
+        .btn-download { background: #2e7d32; color: white; font-size: 15px; padding: 10px 25px; }
+        .btn-download:hover { background: #1b5e20; transform: translateY(-1px); }
+        .btn-delete { background: #d32f2f; color: white; }
+        .btn-delete:hover { background: #b71c1c; }
+        .btn-reload { background: #546e7a; color: white; }
+        
+        .summary { font-size: 14px; color: #555; }
+        .badge { background: #1a237e; color: white; padding: 2px 10px; border-radius: 12px; font-weight: bold; }
+        
+        /* 欄位寬度分配 */
+        .col-name { width: 16%; }
+        .col-desc { width: 32%; }
+        .col-source { width: 14%; }
+        .col-date { width: 11%; }
+        .col-status { width: 9%; }
+        .col-comment { width: 10%; }
+        .col-action { width: 8%; text-align: center; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h2>古今鐵道營業線 - 屬性批次編輯器</h2>
+        <button class="btn btn-download" onclick="downloadJSON()">💾 下載並覆蓋 data.json</button>
+    </header>
+
+    <div class="toolbar">
+        <div class="summary" id="summary-text">正在讀取軌道資料庫...</div>
+        <button class="btn btn-reload" onclick="location.reload()">🔄 重新整理</button>
+        <div style="margin-left: auto; color: #c62828; font-size: 13px; font-weight: bold; background: #ffebee; padding: 5px 15px; border-radius: 4px;">
+            ⚠️ 提醒：刪除或修改後，須點擊右上方「下載」鈕才能存檔
+        </div>
+    </div>
+
+    <table id="props-table">
+        <thead>
+            <tr>
+                <th class="col-name">路線名稱 (name)</th>
+                <th class="col-desc">歷史簡介 (description.zh)</th>
+                <th class="col-source">資料來源 (source)</th>
+                <th class="col-date">更新日期</th>
+                <th class="col-status">營運狀態</th>
+                <th class="col-comment">備註</th>
+                <th class="col-action">管理</th>
+            </tr>
+        </thead>
+        <tbody id="table-body">
+            </tbody>
+    </table>
+</div>
+
+<script>
+    let fullData = null;
+
+    // 1. 自動載入與校對標籤
+    fetch('data.json')
+        .then(res => res.json())
+        .then(data => {
+            fullData = data;
+            renderTable();
+        })
+        .catch(err => {
+            document.getElementById('summary-text').innerHTML = "<b style='color:red;'>❌ 錯誤：無法找到 data.json 檔案</b>";
+            console.error(err);
+        });
+
+    // 2. 渲染表格介面
+    function renderTable() {
+        if (!fullData || !fullData.data || !fullData.data.features) return;
+        
+        const tbody = document.getElementById('table-body');
+        const features = fullData.data.features;
+        tbody.innerHTML = '';
+
+        features.forEach((feat, index) => {
+            const p = feat.properties;
+            const tr = document.createElement('tr');
+
+            // 處理多語系描述結構 (description.zh)
+            const zhDesc = p.description?.zh || "";
+            
+            tr.innerHTML = `
+                <td><input type="text" value="${p.name || ''}" onchange="updateProp(${index}, 'name', this.value)" placeholder="路線名"></td>
+                <td><textarea onchange="updateSubProp(${index}, 'description', 'zh', this.value)" placeholder="考據簡介...">${zhDesc}</textarea></td>
+                <td><input type="text" value="${p.source || ''}" onchange="updateProp(${index}, 'source', this.value)" placeholder="來源"></td>
+                <td><input type="text" value="${p.last_updated || ''}" onchange="updateProp(${index}, 'last_updated', this.value)" placeholder="YYYY-MM-DD"></td>
+                <td><input type="text" value="${p.status || ''}" onchange="updateProp(${index}, 'status', this.value)" placeholder="廢止/營運"></td>
+                <td><input type="text" value="${p.comment || ''}" onchange="updateProp(${index}, 'comment', this.value)"></td>
+                <td class="col-action">
+                    <button class="btn btn-delete" onclick="deleteRoute(${index})">刪除</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        document.getElementById('summary-text').innerHTML = `目前資料庫共有 <span class="badge">${features.length}</span> 條獨立鐵道要素`;
+    }
+
+    // 3. 資料異動追蹤
+    function updateProp(index, key, value) {
+        fullData.data.features[index].properties[key] = value;
+    }
+
+    function updateSubProp(index, key, subkey, value) {
+        if (!fullData.data.features[index].properties[key]) {
+            fullData.data.features[index].properties[key] = {};
+        }
+        fullData.data.features[index].properties[key][subkey] = value;
+    }
+
+    // 4. 刪除整條路線功能
+    function deleteRoute(index) {
+        const routeName = fullData.data.features[index].properties.name || "這條未命名路線";
+        const confirmResult = confirm(`🚨 警告：\n您確定要永久刪除「${routeName}」嗎？\n這將會連同地圖上的座標資料一併移除。`);
+        
+        if (confirmResult) {
+            fullData.data.features.splice(index, 1); // 從陣列中移除該要素
+            renderTable(); // 重新整理表格
+        }
+    }
+
+    // 5. 匯出標準化 JSON
+    function downloadJSON() {
+        if (!fullData) return;
+        
+        // 增加一個標註說明
+        fullData.last_modified_by = "HGIS Props Editor";
+        
+        const dataStr = JSON.stringify(fullData, null, 4);
+        const blob = new Blob([dataStr], {type: "application/json"});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = "data.json";
+        a.click();
+        
+        alert("✅ 下載成功！請將新的 data.json 覆蓋原本的檔案。");
+    }
+</script>
+
+</body>
+</html>

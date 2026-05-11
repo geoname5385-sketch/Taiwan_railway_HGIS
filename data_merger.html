@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>HGIS 空間拓樸縫合機 2.0</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body { font-family: "Microsoft JhengHei", sans-serif; background: #f4f5f7; padding: 40px; color: #333; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        h2 { color: #1a237e; border-bottom: 2px solid #1a237e; padding-bottom: 10px; margin-top: 0; }
+        .status-card { background: #e8eaf6; padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 5px solid #1a237e; }
+        .config-section { background: #fffde7; padding: 15px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #fff59d; }
+        .btn { background: #1a237e; color: white; border: none; padding: 12px 24px; font-size: 16px; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; transition: 0.2s; }
+        .btn:hover { background: #0d1642; }
+        .btn-download { background: #2e7d32; margin-top: 15px; display: none; }
+        .btn-download:hover { background: #1b5e20; }
+        #logArea { background: #1e1e1e; color: #4caf50; padding: 15px; border-radius: 6px; font-family: monospace; height: 300px; overflow-y: auto; margin-top: 20px; font-size: 13px; line-height: 1.6; }
+        .log-info { color: #64b5f6; }
+        .log-success { color: #81c784; }
+        .log-warn { color: #ffb74d; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>🛠️ 鐵道資料拓樸縫合機 2.0</h2>
+    
+    <div class="status-card" id="loadStatus">
+        正在讀取 data.json... (請確認檔案與本程式在同一目錄)
+    </div>
+
+    <div class="config-section">
+        <label><b>縫合誤差容許度：</b></label>
+        <input type="number" id="tolInput" value="0.0001" step="0.00001">
+        <p style="font-size: 12px; color: #666; margin: 5px 0 0 0;">
+            ※ 0.0001 度約等於 11 公尺。如果兩條線的端點距離在此範圍內，將自動合併。
+        </p>
+    </div>
+
+    <button id="mergeBtn" class="btn" style="display:none;" onclick="startMerge()">🚀 執行自動縫合</button>
+    <button id="downloadBtn" class="btn btn-download" onclick="downloadFile()">📥 下載縫合後的 data.json</button>
+
+    <div id="logArea">等待系統初始化...</div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    let rawFeatures = [];
+    let mergedData = null;
+    const log = document.getElementById('logArea');
+
+    function printLog(msg, type = '') {
+        const span = document.createElement('span');
+        span.className = type;
+        span.innerHTML = msg + '<br>';
+        log.appendChild(span);
+        log.scrollTop = log.scrollHeight;
+    }
+
+    function getBaseName(name) {
+        if (!name) return "未命名路線";
+        // 移除常見的子段後綴，如 (子段 1), (段A), (前段)
+        return name.replace(/\s*\((子段|段|前段|後段).*?\)/g, '').trim();
+    }
+
+    function getDistance(p1, p2) {
+        return Math.hypot(p1[0] - p2[0], p1[1] - p2[1]);
+    }
+
+    // 1. 初始化讀檔 (完全比照 index.html)
+    fetch('data.json')
+        .then(res => res.json())
+        .then(rawData => {
+            // 使用 Leaflet 解析，確保 100% 容錯
+            L.geoJSON(rawData.data, {
+                onEachFeature: function (f, l) {
+                    rawFeatures.push(f);
+                }
+            });
+
+            if (rawFeatures.length > 0) {
+                document.getElementById('loadStatus').innerHTML = `✅ 成功載入 ${rawFeatures.length} 條原始路段。`;
+                document.getElementById('mergeBtn').style.display = 'block';
+                printLog(`資料載入成功。準備處理 ${rawFeatures.length} 筆 Feature。`, 'log-info');
+            } else {
+                document.getElementById('loadStatus').innerHTML = `❌ 找不到路線資料，請檢查 rawData.data 結構。`;
+            }
+        })
+        .catch(err => {
+            document.getElementById('loadStatus').innerHTML = `❌ 讀取失敗，請確認同目錄下是否有 data.json。`;
+            printLog(`錯誤: ${err.message}`, 'log-warn');
+        });
+
+    // 2. 縫合演算法
+    function mergeSegments(lines, tol) {
+        let merged = [];
+        let used = new Array(lines.length).fill(false);
+
+        for (let i = 0; i < lines.length; i++) {
+            if (used[i]) continue;
+            let current = [...lines[i]];
+            used[i] = true;
+            
+            let changed = true;
+            while (changed) {
+                changed = false;
+                for (let j = 0; j < lines.length; j++) {
+                    if (used[j]) continue;
+                    let cand = lines[j];
+                    let p_start = current[0];
+                    let p_end = current[current.length - 1];
+                    let c_start = cand[0];
+                    let c_end = cand[cand.length - 1];
+                    
+                    if (getDistance(p_end, c_start) <= tol) {
+                        current.push(...cand.slice(1));
+                        used[j] = true; changed = true;
+                    } else if (getDistance(p_end, c_end) <= tol) {
+                        current.push(...[...cand].reverse().slice(1));
+                        used[j] = true; changed = true;
+                    } else if (getDistance(p_start, c_end) <= tol) {
+                        current.unshift(...cand.slice(0, -1));
+                        used[j] = true; changed = true;
+                    } else if (getDistance(p_start, c_start) <= tol) {
+                        current.unshift(...[...cand].reverse().slice(0, -1));
+                        used[j] = true; changed = true;
+                    }
+                }
+            }
+            merged.push(current);
+        }
+        return merged;
+    }
+
+    function startMerge() {
+        const tol = parseFloat(document.getElementById('tolInput').value);
+        log.innerHTML = "";
+        printLog(`開始執行拓樸縫合，容許誤差: ${tol} 度...`, 'log-info');
+
+        let groups = {};
+        let otherFeatures = [];
+
+        // 分組
+        rawFeatures.forEach(f => {
+            if (f.geometry && (f.geometry.type === "LineString" || f.geometry.type === "MultiLineString")) {
+                let base = getBaseName(f.properties.name);
+                if (!groups[base]) {
+                    groups[base] = { props: JSON.parse(JSON.stringify(f.properties)), coords: [] };
+                    groups[base].props.name = base;
+                }
+                if (f.geometry.type === "LineString") {
+                    groups[base].coords.push(f.geometry.coordinates);
+                } else {
+                    groups[base].coords.push(...f.geometry.coordinates);
+                }
+            } else {
+                otherFeatures.push(f);
+            }
+        });
+
+        let resultFeatures = [...otherFeatures];
+        
+        for (let name in groups) {
+            let originalCount = groups[name].coords.length;
+            let stitched = mergeSegments(groups[name].coords, tol);
+            
+            stitched.forEach((lineCoords, idx) => {
+                let finalProps = JSON.parse(JSON.stringify(groups[name].props));
+                // 如果縫合後還是斷開的，標註子段
+                if (stitched.length > 1) finalProps.name += ` (段 ${idx + 1})`;
+
+                resultFeatures.push({
+                    type: "Feature",
+                    properties: finalProps,
+                    geometry: { type: "LineString", coordinates: lineCoords }
+                });
+            });
+
+            if (originalCount > 1) {
+                printLog(`[${name}]: ${originalCount} 段 ➔ 縫合為 ${stitched.length} 段`, 'log-success');
+            }
+        }
+
+        mergedData = { "data": { "type": "FeatureCollection", "features": resultFeatures } };
+        printLog(`處理完成！總要素數: ${resultFeatures.length}`, 'log-info');
+        document.getElementById('downloadBtn').style.display = 'block';
+    }
+
+    function downloadFile() {
+        if (!mergedData) return;
+        const blob = new Blob([JSON.stringify(mergedData, null, 2)], {type: "application/json"});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = "data_merged.json";
+        a.click();
+    }
+</script>
+
+</body>
+</html>
