@@ -43,17 +43,16 @@
         }
 
         /* =========================================
-           動態伸縮搜尋列 (預設為帶放大鏡的圓形按鈕)
+           動態伸縮搜尋列 (預設帶有放大鏡)
            ========================================= */
         #custom-search-box {
             position: absolute;
             top: 15px;
-            left: 60px; /* 避開地圖預設的縮放按鈕 (+/-) */
+            left: 60px; /* 避開地圖縮放按鈕 */
             background-color: white;
-            /* 放大鏡 SVG 直接放在外層容器背景，收合時依然可見 */
             background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23666"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>');
             background-repeat: no-repeat;
-            background-position: 12.5px center; /* 放大鏡置中 */
+            background-position: 12.5px center;
             background-size: 20px;
             z-index: 1000;
             box-shadow: 0 2px 5px rgba(0,0,0,0.3);
@@ -65,48 +64,44 @@
             cursor: pointer;
         }
 
-        /* 收合狀態下：隱藏輸入框文字，避免露餡 */
-        #custom-search-box:not(.expanded) input {
-            opacity: 0;
-            pointer-events: none;
-        }
-
-        /* 展開狀態 (.expanded) */
         #custom-search-box.expanded {
             width: 320px;
             border-radius: 8px;
             cursor: text;
         }
 
-        /* 展開狀態下：顯示輸入框文字 */
+        /* 未展開時隱藏輸入內容 */
+        #custom-search-box:not(.expanded) input {
+            opacity: 0;
+            pointer-events: none;
+        }
+
         #custom-search-box.expanded input {
             opacity: 1;
             pointer-events: auto;
         }
 
-        /* 搜尋輸入框本體樣式 */
         #custom-search-box input {
             width: 100%;
             height: 45px;
             border: none;
             outline: none;
             background-color: transparent;
-            padding-left: 40px; /* 避開左側的放大鏡圖示 */
+            padding-left: 40px;
             font-size: 16px;
             box-sizing: border-box;
-            transition: opacity 0.3s ease;
         }
 
-        /* 搜尋結果下拉選單 */
+        /* 搜尋結果選單 */
         #searchDropdown {
             position: absolute;
-            top: 55px; /* 距離搜尋框下方一點點 */
+            top: 55px;
             left: 0;
             width: 100%;
             background: white;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             border-radius: 5px;
-            display: none; /* 預設隱藏 */
+            display: none;
             max-height: 300px;
             overflow-y: auto;
             z-index: 1001;
@@ -126,16 +121,14 @@
         }
 
         /* =========================================
-           手機版自適應排版 (螢幕寬度小於 768px 時觸發)
+           手機版自適應
            ========================================= */
         @media (max-width: 768px) {
-            /* 1. 手機版搜尋框展開時改為近乎滿版 */
             #custom-search-box.expanded {
-                width: calc(100% - 75px) !important; 
+                width: calc(100% - 75px) !important;
                 left: 60px !important;
             }
 
-            /* 2. 藍底標題移到畫面下方置中，避開搜尋列與下拉選單 */
             #system-title {
                 top: auto !important;
                 bottom: 30px !important;
@@ -145,11 +138,6 @@
                 font-size: 14px !important;
                 padding: 8px 15px;
                 white-space: nowrap;
-            }
-
-            /* 3. 限制手機版搜尋清單高度，避免蓋住整個畫面 */
-            #searchDropdown {
-                max-height: 40vh !important;
             }
         }
     </style>
@@ -168,47 +156,31 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     
     <script>
-        // =========================================
-        // 1. 初始化 Leaflet 地圖
-        // =========================================
+        // 1. 初始化地圖
         const map = L.map('map').setView([23.6978, 120.9605], 7);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            attribution: '&copy; OpenStreetMap'
         }).addTo(map);
 
         let geojsonLayer;
         let allFeatures = [];
 
-        // =========================================
-        // 2. 讀取與繪製 JSON 資料
-        // =========================================
+        // 2. 讀取資料
         fetch('data.json')
-            .then(response => {
-                if (!response.ok) throw new Error('無法讀取 data.json 檔案');
-                return response.json();
-            })
+            .then(response => response.json())
             .then(rawData => {
-                // 核心修正：自動判斷並讀取正確的 geojson 結構 (.data 屬性)
                 const geoData = rawData.data || rawData; 
                 allFeatures = geoData.features;
 
                 geojsonLayer = L.geoJSON(geoData, {
-                    style: function (feature) {
-                        return {
-                            color: "#ff7800", // 預設路線橘色
-                            weight: 4,
-                            opacity: 0.8
-                        };
-                    },
+                    style: { color: "#ff7800", weight: 4, opacity: 0.8 },
                     onEachFeature: function (feature, layer) {
                         if (feature.properties) {
-                            let popupContent = `<b>${feature.properties.name || '未命名路線'}</b>`;
-                            if (feature.properties.open_time) {
-                                popupContent += `<br>通車時間: ${feature.properties.open_time}`;
-                            }
-                            layer.bindPopup(popupContent);
+                            let content = `<b>${feature.properties.name || '未命名'}</b>`;
+                            if (feature.properties.open_time) content += `<br>通車: ${feature.properties.open_time}`;
+                            layer.bindPopup(content);
                         }
                     }
                 }).addTo(map);
@@ -217,93 +189,83 @@
                     map.fitBounds(geojsonLayer.getBounds());
                 }
             })
-            .catch(error => {
-                console.error('載入資料錯誤:', error);
-                alert('資料載入失敗，請確認 data.json 格式正確或檔案是否存在。');
+            .catch(err => {
+                console.error(err);
+                alert('資料載入失敗，請確認 data.json 格式。');
             });
 
-        // =========================================
-        // 3. UI 互動：搜尋列伸縮邏輯
-        // =========================================
-        const searchBoxContainer = document.getElementById('custom-search-box');
-        const searchInputField = document.getElementById('searchInput');
+        // 3. 搜尋與顯示邏輯
+        const searchBox = document.getElementById('custom-search-box');
+        const input = document.getElementById('searchInput');
         const dropdown = document.getElementById('searchDropdown');
 
-        // 點擊放大鏡容器展開
-        searchBoxContainer.addEventListener('click', function(e) {
-            if (!this.classList.contains('expanded')) {
-                this.classList.add('expanded');
-                searchInputField.focus();
-            }
-        });
-
-        // 點擊地圖或其他空白處收合
-        document.addEventListener('click', function(e) {
-            if (!searchBoxContainer.contains(e.target)) {
-                if (searchInputField.value.trim() === '') {
-                    searchBoxContainer.classList.remove('expanded');
-                    dropdown.style.display = 'none';
-                }
-            }
-        });
-
-        // =========================================
-        // 4. 搜尋與定位邏輯
-        // =========================================
-        searchInputField.addEventListener('input', function() {
-            // 文字正規化，讓大小寫與空白不影響搜尋
-            const keyword = this.value.trim().toLowerCase();
+        // 渲染清單的函式
+        function renderList(val) {
+            const keyword = val.trim().toLowerCase();
             dropdown.innerHTML = '';
 
-            if (keyword === '') {
-                dropdown.style.display = 'none';
-                if(geojsonLayer) geojsonLayer.setStyle({ color: "#ff7800", weight: 4, opacity: 0.8 });
-                return;
-            }
+            // 如果關鍵字為空，則顯示所有路線；否則過濾
+            const matched = (keyword === '') 
+                ? allFeatures 
+                : allFeatures.filter(f => f.properties && f.properties.name && f.properties.name.toLowerCase().includes(keyword));
 
-            const matchedFeatures = allFeatures.filter(f => 
-                f.properties && f.properties.name && f.properties.name.toLowerCase().includes(keyword)
-            );
-
-            if (matchedFeatures.length > 0) {
+            if (matched.length > 0) {
                 dropdown.style.display = 'block';
-                matchedFeatures.forEach(feature => {
+                matched.forEach(f => {
                     const item = document.createElement('div');
                     item.className = 'search-item';
-                    item.textContent = feature.properties.name;
-                    
-                    item.addEventListener('click', () => {
+                    item.textContent = f.properties.name;
+                    item.onclick = () => {
                         dropdown.style.display = 'none';
-                        searchInputField.value = feature.properties.name;
-
+                        input.value = f.properties.name;
+                        
                         geojsonLayer.eachLayer(layer => {
-                            if (layer.feature === feature) {
-                                layer.setStyle({ color: "red", weight: 6, opacity: 1 });
-                                
-                                // 定位邏輯判斷
-                                if (layer.getBounds) {
-                                    map.fitBounds(layer.getBounds(), { padding: [50, 50] });
-                                } else if (layer.getLatLng) {
-                                    map.setView(layer.getLatLng(), 15);
-                                }
-                                
+                            if (layer.feature === f) {
+                                layer.setStyle({ color: "red", weight: 7, opacity: 1 });
+                                if (layer.getBounds) map.fitBounds(layer.getBounds(), { padding: [50, 50] });
                                 layer.openPopup();
                             } else {
-                                layer.setStyle({ color: "#ff7800", opacity: 0.2, weight: 2 });
+                                layer.setStyle({ color: "#ff7800", opacity: 0.1, weight: 2 });
                             }
                         });
-                    });
+                    };
                     dropdown.appendChild(item);
                 });
             } else {
                 dropdown.style.display = 'none';
             }
+        }
+
+        // 監聽點擊容器展開
+        searchBox.onclick = function(e) {
+            if (!this.classList.contains('expanded')) {
+                this.classList.add('expanded');
+                input.focus();
+            }
+        };
+
+        // 關鍵修正：當輸入框獲得焦點或點擊時，觸發顯示清單
+        input.onfocus = input.onclick = function() {
+            renderList(this.value);
+        };
+
+        input.oninput = function() {
+            renderList(this.value);
+        };
+
+        // 點擊外面收合
+        document.addEventListener('click', function(e) {
+            if (!searchBox.contains(e.target)) {
+                if (input.value.trim() === '') {
+                    searchBox.classList.remove('expanded');
+                    dropdown.style.display = 'none';
+                } else {
+                    dropdown.style.display = 'none';
+                }
+            }
         });
 
-        // 點擊地圖時，若有下拉選單也順便隱藏
-        map.on('click', () => {
-            dropdown.style.display = 'none';
-        });
+        map.on('click', () => dropdown.style.display = 'none');
     </script>
 </body>
 </html>
