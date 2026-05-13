@@ -220,7 +220,7 @@
             if (matched.length > 0) {
                 dropdown.style.display = 'block';
 
-                // 👇 v7.2 核心邏輯：在未輸入關鍵字時，於清單最頂部加入「隨機探索」按鈕
+                // 👇 v7.3 核心邏輯：在未輸入關鍵字時，於清單最頂部加入「隨機探索」按鈕
                 if (keyword === '' && allFeatures.length > 0) {
                     const randomItem = document.createElement('div');
                     randomItem.className = 'search-item random-item';
@@ -228,9 +228,8 @@
                     
                     randomItem.onclick = (e) => {
                         e.stopPropagation();
-                        // 點擊後收合選單與鍵盤
+                        // 🎯 修正：點擊後僅收合選單與鍵盤，保持搜尋列「展開」並顯示名稱
                         dropdown.style.display = 'none';
-                        searchBox.classList.remove('expanded');
                         input.blur();
 
                         // 抽選路線並套用動畫
