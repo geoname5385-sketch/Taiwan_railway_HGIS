@@ -264,7 +264,11 @@
                 input.value = '';
                 renderList('');
                 if(geojsonLayer) geojsonLayer.setStyle({ color: "#ff7800", weight: 4, opacity: 0.8 }); 
-                // 👇 [核心修正]：移除 input.focus()，避免清空時自動彈出鍵盤
+                
+                // 👇 桌機版自動聚焦
+                if (window.innerWidth > 768) {
+                    input.focus();
+                }
             } else {
                 // 沒字：縮回小圓球
                 searchBox.classList.remove('expanded');
@@ -276,9 +280,13 @@
         searchBox.onclick = function(e) {
             if (!this.classList.contains('expanded')) {
                 this.classList.add('expanded');
-                // 展開時不自動聚焦，由使用者點擊輸入框才彈出鍵盤
                 clearBtn.style.display = 'block'; 
                 renderList(''); 
+                
+                // 👇 桌機版自動聚焦
+                if (window.innerWidth > 768) {
+                    input.focus();
+                }
             }
         };
 
