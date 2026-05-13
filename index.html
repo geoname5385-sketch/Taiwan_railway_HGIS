@@ -64,6 +64,18 @@
         .search-item { padding: 12px 15px; cursor: pointer; border-bottom: 1px solid #eee; font-size: 15px; color: #333; }
         .search-item:hover { background-color: #f0f4ff; color: #1a237e; }
 
+        /* 🎲 隨機選項專屬樣式 */
+        .random-item {
+            background-color: #e8eaf6; 
+            color: #1a237e; 
+            font-weight: bold; 
+            text-align: center;
+            border-bottom: 2px solid #c5cae9;
+        }
+        .random-item:hover {
+            background-color: #c5cae9;
+        }
+
         /* 字首標題的樣式 (具備吸附置頂效果) */
         .search-letter-header {
             padding: 4px 15px;
@@ -75,19 +87,6 @@
             top: 0;           
             z-index: 10;      
         }
-
-        /* 🎲 隨機探索按鈕 (v7.1 新增) */
-        #randomBtn {
-            position: absolute; top: 70px; left: 60px; z-index: 1000;
-            background-color: white; color: #1a237e;
-            width: 45px; height: 45px; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 22px; cursor: pointer;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-            transition: all 0.3s ease;
-        }
-        #randomBtn:hover { background-color: #f0f4ff; transform: scale(1.05); }
-        #randomBtn:active { transform: scale(0.95); }
 
         /* 圖層面板美化 */
         .leaflet-control-layers {
@@ -114,8 +113,6 @@
         <span id="clearBtn" title="清除">&times;</span>
         <div id="searchDropdown"></div>
     </div>
-
-    <div id="randomBtn" title="隨機探索一條路線">🎲</div>
 
     <div id="map"></div>
 
@@ -222,6 +219,43 @@
 
             if (matched.length > 0) {
                 dropdown.style.display = 'block';
+
+                // 👇 v7.2 核心邏輯：在未輸入關鍵字時，於清單最頂部加入「隨機探索」按鈕
+                if (keyword === '' && allFeatures.length > 0) {
+                    const randomItem = document.createElement('div');
+                    randomItem.className = 'search-item random-item';
+                    randomItem.innerHTML = '🎲 隨機探索一條路線';
+                    
+                    randomItem.onclick = (e) => {
+                        e.stopPropagation();
+                        // 點擊後收合選單與鍵盤
+                        dropdown.style.display = 'none';
+                        searchBox.classList.remove('expanded');
+                        input.blur();
+
+                        // 抽選路線並套用動畫
+                        const randomIndex = Math.floor(Math.random() * allFeatures.length);
+                        const randomFeature = allFeatures[randomIndex];
+                        const lineName = randomFeature.properties.name || '未命名';
+                        
+                        input.value = lineName;
+                        clearBtn.style.display = 'block';
+
+                        geojsonLayer.eachLayer(layer => {
+                            if (layer.feature === randomFeature) {
+                                layer.setStyle({ color: "red", weight: 8, opacity: 1 });
+                                if (layer.bringToFront) layer.bringToFront();
+                                if (layer.getBounds) {
+                                    map.flyToBounds(layer.getBounds(), { padding: [50, 50], duration: 1.5 });
+                                }
+                                layer.openPopup();
+                            } else {
+                                layer.setStyle({ color: "#ff7800", opacity: 0.8, weight: 4 });
+                            }
+                        });
+                    };
+                    dropdown.appendChild(randomItem);
+                }
                 
                 let currentLetter = ''; 
 
@@ -319,43 +353,6 @@
         dropdown.addEventListener('scroll', function() {
             input.blur();
         }, { passive: true });
-
-        // 👇 v7.1 核心邏輯：🎲 隨機探索按鈕
-        const randomBtn = document.getElementById('randomBtn');
-        randomBtn.onclick = function(e) {
-            e.stopPropagation();
-            if (allFeatures.length === 0) return;
-
-            // 收合介面，確保視覺乾淨
-            input.blur();
-            searchBox.classList.remove('expanded');
-            dropdown.style.display = 'none';
-
-            // 隨機抽選一條路線
-            const randomIndex = Math.floor(Math.random() * allFeatures.length);
-            const randomFeature = allFeatures[randomIndex];
-
-            // 更新輸入框狀態
-            const lineName = randomFeature.properties.name || '未命名';
-            input.value = lineName;
-            clearBtn.style.display = 'block';
-
-            // 地圖連動與動畫
-            geojsonLayer.eachLayer(layer => {
-                if (layer.feature === randomFeature) {
-                    layer.setStyle({ color: "red", weight: 8, opacity: 1 });
-                    if (layer.bringToFront) layer.bringToFront();
-                    
-                    // 使用 flyToBounds 創造「時空旅行」的滑翔動畫感
-                    if (layer.getBounds) {
-                        map.flyToBounds(layer.getBounds(), { padding: [50, 50], duration: 1.5 });
-                    }
-                    layer.openPopup();
-                } else {
-                    layer.setStyle({ color: "#ff7800", opacity: 0.8, weight: 4 });
-                }
-            });
-        };
 
     </script>
 </body>
