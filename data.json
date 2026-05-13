@@ -5,7 +5,7 @@
       {
         "type": "Feature",
         "properties": {
-          "name": "隆田線 Liông-tiân-suànn",
+          "name": "隆田線",
           "description": {
             "zh": "隆田製糖所管轄之營業線，連結隆田與學甲地區。",
             "en": "Former sugar railway connecting Longtian and Xuejia area."
@@ -14,7 +14,8 @@
           "last_updated": "2026-05-09",
           "status": "廢止",
           "period": "日治/戰後",
-          "comment": "Imported from SHP (ID: 1)"
+          "comment": "Imported from SHP (ID: 1)",
+          "tailo": "Liông-tiân-suànn"
         },
         "geometry": {
           "type": "LineString",
@@ -817,7 +818,7 @@
       {
         "type": "Feature",
         "properties": {
-          "name": "學甲線 Ha̍k-kah-suànn",
+          "name": "學甲線",
           "description": {
             "zh": "在此輸入中文歷史描述",
             "en": "Input English description"
@@ -830,7 +831,8 @@
           "altitudeMode": "clampToGround",
           "tessellate": -1,
           "extrude": 0,
-          "visibility": -1
+          "visibility": -1,
+          "tailo": "Ha̍k-kah-suànn"
         },
         "geometry": {
           "type": "LineString",
@@ -1265,7 +1267,7 @@
       {
         "type": "Feature",
         "properties": {
-          "name": "港林線 Káng-lîm-suànn",
+          "name": "港林線",
           "description": {
             "zh": "在此輸入中文歷史描述",
             "en": "Input English description"
@@ -1278,7 +1280,8 @@
           "altitudeMode": "clampToGround",
           "tessellate": -1,
           "extrude": 0,
-          "visibility": -1
+          "visibility": -1,
+          "tailo": "Káng-lîm-suànn"
         },
         "geometry": {
           "type": "LineString",
@@ -2377,7 +2380,7 @@
       {
         "type": "Feature",
         "properties": {
-          "name": "旗尾線 Kî-bué-suànn",
+          "name": "旗尾線",
           "description": {
             "zh": "在此輸入中文歷史描述",
             "en": "Input English description"
@@ -2390,7 +2393,8 @@
           "altitudeMode": "clampToGround",
           "tessellate": -1,
           "extrude": 0,
-          "visibility": -1
+          "visibility": -1,
+          "tailo": "Kî-bué-suànn"
         },
         "geometry": {
           "type": "LineString",
@@ -3877,7 +3881,7 @@
       {
         "type": "Feature",
         "properties": {
-          "name": "龍岩線 Lîng-nâ-suànn",
+          "name": "龍岩線",
           "description": {
             "zh": "在此輸入中文歷史描述",
             "en": "Input English description"
@@ -3890,7 +3894,8 @@
           "altitudeMode": "clampToGround",
           "tessellate": -1,
           "extrude": 0,
-          "visibility": -1
+          "visibility": -1,
+          "tailo": "Lîng-nâ-suànn"
         },
         "geometry": {
           "type": "LineString",
@@ -4573,7 +4578,7 @@
       {
         "type": "Feature",
         "properties": {
-          "name": "口湖線 Kháu-ôo-suànn",
+          "name": "口湖線",
           "description": {
             "zh": "在此輸入中文歷史描述",
             "en": "Input English description"
@@ -4586,7 +4591,8 @@
           "altitudeMode": "clampToGround",
           "tessellate": -1,
           "extrude": 0,
-          "visibility": -1
+          "visibility": -1,
+          "tailo": "Kháu-ôo-suànn"
         },
         "geometry": {
           "type": "LineString",
@@ -4949,7 +4955,7 @@
       {
         "type": "Feature",
         "properties": {
-          "name": "北港線 Pak-kàng-suànn（虎尾北港間）",
+          "name": "北港線",
           "description": {
             "zh": "在此輸入中文歷史描述",
             "en": "Input English description"
@@ -4962,7 +4968,8 @@
           "altitudeMode": "clampToGround",
           "tessellate": -1,
           "extrude": 0,
-          "visibility": -1
+          "visibility": -1,
+          "tailo": "Pak-kàng-suànn（虎尾北港間）"
         },
         "geometry": {
           "type": "LineString",
@@ -5801,7 +5808,7 @@
       {
         "type": "Feature",
         "properties": {
-          "name": "西螺線 Sai-lê-suànn",
+          "name": "西螺線",
           "description": {
             "zh": "在此輸入中文歷史描述",
             "en": "Input English description"
@@ -5814,7 +5821,8 @@
           "altitudeMode": "clampToGround",
           "tessellate": -1,
           "extrude": 0,
-          "visibility": -1
+          "visibility": -1,
+          "tailo": "Sai-lê-suànn"
         },
         "geometry": {
           "type": "LineString",
@@ -6405,7 +6413,7 @@
       {
         "type": "Feature",
         "properties": {
-          "name": "三條崙線 Sann-tiâu-lūn-suànn",
+          "name": "三條崙線",
           "description": {
             "zh": "在此輸入中文歷史描述",
             "en": "Input English description"
@@ -6418,7 +6426,8 @@
           "altitudeMode": "clampToGround",
           "tessellate": -1,
           "extrude": 0,
-          "visibility": -1
+          "visibility": -1,
+          "tailo": "Sann-tiâu-lūn-suànn"
         },
         "geometry": {
           "type": "LineString",
@@ -6881,7 +6890,7 @@
       {
         "type": "Feature",
         "properties": {
-          "name": "貓兒干線 Bâ-lî-kan-suànn",
+          "name": "貓兒干線",
           "description": {
             "zh": "在此輸入中文歷史描述",
             "en": "Input English description"
@@ -6894,7 +6903,8 @@
           "altitudeMode": "clampToGround",
           "tessellate": -1,
           "extrude": 0,
-          "visibility": -1
+          "visibility": -1,
+          "tailo": "Bâ-lî-kan-suànn"
         },
         "geometry": {
           "type": "LineString",
@@ -7185,7 +7195,7 @@
       {
         "type": "Feature",
         "properties": {
-          "name": "崙背線 Lūn-puè-suànn",
+          "name": "崙背線",
           "description": {
             "zh": "在此輸入中文歷史描述",
             "en": "Input English description"
@@ -7198,7 +7208,8 @@
           "altitudeMode": "clampToGround",
           "tessellate": -1,
           "extrude": 0,
-          "visibility": -1
+          "visibility": -1,
+          "tailo": "Lūn-puè-suànn"
         },
         "geometry": {
           "type": "LineString",
@@ -7785,7 +7796,7 @@
       {
         "type": "Feature",
         "properties": {
-          "name": "朴子線 Phoh-tsú-suànn",
+          "name": "朴子線",
           "description": {
             "zh": "在此輸入中文歷史描述",
             "en": "Input English description"
@@ -7798,7 +7809,8 @@
           "altitudeMode": "clampToGround",
           "tessellate": -1,
           "extrude": 0,
-          "visibility": -1
+          "visibility": -1,
+          "tailo": "Phoh-tsú-suànn"
         },
         "geometry": {
           "type": "LineString",
@@ -8281,7 +8293,7 @@
       {
         "type": "Feature",
         "properties": {
-          "name": "小梅線 Sió-buê-suànn",
+          "name": "小梅線",
           "description": {
             "zh": "在此輸入中文歷史描述",
             "en": "Input English description"
@@ -8294,7 +8306,8 @@
           "altitudeMode": "clampToGround",
           "tessellate": -1,
           "extrude": 0,
-          "visibility": -1
+          "visibility": -1,
+          "tailo": "Sió-buê-suànn"
         },
         "geometry": {
           "type": "LineString",
@@ -8809,7 +8822,7 @@
       {
         "type": "Feature",
         "properties": {
-          "name": "南靖線 Lâm-tsīng-suànn",
+          "name": "南靖線",
           "description": {
             "zh": "在此輸入中文歷史描述",
             "en": "Input English description"
@@ -8822,7 +8835,8 @@
           "altitudeMode": "clampToGround",
           "tessellate": -1,
           "extrude": 0,
-          "visibility": -1
+          "visibility": -1,
+          "tailo": "Lâm-tsīng-suànn"
         },
         "geometry": {
           "type": "LineString",
@@ -9141,7 +9155,7 @@
       {
         "type": "Feature",
         "properties": {
-          "name": "北港線 Pak-kàng-suànn（嘉義北港間）",
+          "name": "北港線",
           "description": {
             "zh": "在此輸入中文歷史描述",
             "en": "Input English description"
@@ -9154,7 +9168,8 @@
           "altitudeMode": "clampToGround",
           "tessellate": -1,
           "extrude": 0,
-          "visibility": -1
+          "visibility": -1,
+          "tailo": "Pak-kàng-suànn（嘉義北港間）"
         },
         "geometry": {
           "type": "LineString",
@@ -9645,7 +9660,7 @@
       {
         "type": "Feature",
         "properties": {
-          "name": "關廟線 Kuan-biō-suànn",
+          "name": "關廟線",
           "description": {
             "zh": "在此輸入中文歷史描述",
             "en": "Input English description"
@@ -9658,7 +9673,8 @@
           "altitudeMode": "clampToGround",
           "tessellate": -1,
           "extrude": 0,
-          "visibility": -1
+          "visibility": -1,
+          "tailo": "Kuan-biō-suànn"
         },
         "geometry": {
           "type": "MultiLineString",
@@ -11227,7 +11243,7 @@
       {
         "type": "Feature",
         "properties": {
-          "name": "里港線 Lí-káng-suànn",
+          "name": "里港線",
           "description": {
             "zh": "在此輸入中文歷史描述",
             "en": "Input English description"
@@ -11240,7 +11256,8 @@
           "altitudeMode": "clampToGround",
           "tessellate": -1,
           "extrude": 0,
-          "visibility": -1
+          "visibility": -1,
+          "tailo": "Lí-káng-suànn"
         },
         "geometry": {
           "type": "MultiLineString",
@@ -12419,7 +12436,7 @@
       {
         "type": "Feature",
         "properties": {
-          "name": "東港線 Tang-káng-suànn",
+          "name": "東港線",
           "description": {
             "zh": "在此輸入中文歷史描述",
             "en": "Input English description"
@@ -12432,7 +12449,8 @@
           "altitudeMode": "clampToGround",
           "tessellate": -1,
           "extrude": 0,
-          "visibility": -1
+          "visibility": -1,
+          "tailo": "Tang-káng-suànn"
         },
         "geometry": {
           "type": "LineString",
