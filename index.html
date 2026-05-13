@@ -43,12 +43,12 @@
         }
 
         /* =========================================
-           動態伸縮搜尋列 (預設帶有放大鏡)
+           動態伸縮搜尋列
            ========================================= */
         #custom-search-box {
             position: absolute;
             top: 15px;
-            left: 60px; /* 避開地圖縮放按鈕 */
+            left: 60px;
             background-color: white;
             background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23666"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>');
             background-repeat: no-repeat;
@@ -70,7 +70,6 @@
             cursor: text;
         }
 
-        /* 未展開時隱藏輸入內容 */
         #custom-search-box:not(.expanded) input {
             opacity: 0;
             pointer-events: none;
@@ -88,8 +87,34 @@
             outline: none;
             background-color: transparent;
             padding-left: 40px;
+            padding-right: 35px; /* 留空間給叉叉按鈕 */
             font-size: 16px;
             box-sizing: border-box;
+        }
+
+        /* 叉叉清除按鈕 */
+        #clearBtn {
+            position: absolute;
+            right: 10px;
+            top: 12px;
+            font-size: 20px;
+            color: #999;
+            cursor: pointer;
+            display: none; /* 預設隱藏 */
+            z-index: 1002;
+            width: 20px;
+            height: 20px;
+            line-height: 18px;
+            text-align: center;
+        }
+        
+        #clearBtn:hover {
+            color: #333;
+        }
+
+        /* 收合時強制隱藏叉叉 */
+        #custom-search-box:not(.expanded) #clearBtn {
+            display: none !important;
         }
 
         /* 搜尋結果選單 */
@@ -148,6 +173,7 @@
 
     <div id="custom-search-box">
         <input type="text" id="searchInput" placeholder="搜尋路線名稱..." autocomplete="off">
+        <span id="clearBtn" title="清除">&times;</span>
         <div id="searchDropdown"></div>
     </div>
 
@@ -156,7 +182,6 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     
     <script>
-        // 1. 初始化地圖
         const map = L.map('map').setView([23.6978, 120.9605], 7);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -167,7 +192,6 @@
         let geojsonLayer;
         let allFeatures = [];
 
-        // 2. 讀取資料
         fetch('data.json')
             .then(response => response.json())
             .then(rawData => {
@@ -194,20 +218,24 @@
                 alert('資料載入失敗，請確認 data.json 格式。');
             });
 
-        // 3. 搜尋與顯示邏輯
         const searchBox = document.getElementById('custom-search-box');
         const input = document.getElementById('searchInput');
         const dropdown = document.getElementById('searchDropdown');
+        const clearBtn = document.getElementById('clearBtn'); 
 
-        // 渲染清單的函式
         function renderList(val) {
             const keyword = val.trim().toLowerCase();
             dropdown.innerHTML = '';
 
-            // 如果關鍵字為空，則顯示所有路線；否則過濾
+            clearBtn.style.display = keyword.length > 0 ? 'block' : 'none';
+
             const matched = (keyword === '') 
                 ? allFeatures 
                 : allFeatures.filter(f => f.properties && f.properties.name && f.properties.name.toLowerCase().includes(keyword));
+
+            if (keyword === '') {
+                if(geojsonLayer) geojsonLayer.setStyle({ color: "#ff7800", weight: 4, opacity: 0.8 });
+            }
 
             if (matched.length > 0) {
                 dropdown.style.display = 'block';
@@ -218,14 +246,15 @@
                     item.onclick = () => {
                         dropdown.style.display = 'none';
                         input.value = f.properties.name;
+                        clearBtn.style.display = 'block'; 
                         
                         geojsonLayer.eachLayer(layer => {
                             if (layer.feature === f) {
-                                layer.setStyle({ color: "red", weight: 7, opacity: 1 });
+                                layer.setStyle({ color: "red", weight: 7, opacity: 1 }); 
                                 if (layer.getBounds) map.fitBounds(layer.getBounds(), { padding: [50, 50] });
                                 layer.openPopup();
                             } else {
-                                layer.setStyle({ color: "#ff7800", opacity: 0.1, weight: 2 });
+                                layer.setStyle({ color: "#ff7800", opacity: 0.4, weight: 3 });
                             }
                         });
                     };
@@ -236,7 +265,20 @@
             }
         }
 
-        // 監聽點擊容器展開
+        // 💡 修改點：點選叉叉按鈕時，直接收合搜尋框
+        clearBtn.onclick = function(e) {
+            e.stopPropagation(); // 避免觸發搜尋框展開
+            input.value = ''; // 清除文字
+            this.style.display = 'none'; // 隱藏叉叉
+            dropdown.style.display = 'none'; // 隱藏下拉選單
+            
+            // 恢復地圖所有路線
+            if(geojsonLayer) geojsonLayer.setStyle({ color: "#ff7800", weight: 4, opacity: 0.8 }); 
+            
+            // 移除 expanded 類別，讓搜尋框縮小
+            searchBox.classList.remove('expanded');
+        };
+
         searchBox.onclick = function(e) {
             if (!this.classList.contains('expanded')) {
                 this.classList.add('expanded');
@@ -244,16 +286,10 @@
             }
         };
 
-        // 關鍵修正：當輸入框獲得焦點或點擊時，觸發顯示清單
-        input.onfocus = input.onclick = function() {
+        input.onfocus = input.onclick = input.oninput = function() {
             renderList(this.value);
         };
 
-        input.oninput = function() {
-            renderList(this.value);
-        };
-
-        // 點擊外面收合
         document.addEventListener('click', function(e) {
             if (!searchBox.contains(e.target)) {
                 if (input.value.trim() === '') {
