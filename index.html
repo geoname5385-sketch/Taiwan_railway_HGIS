@@ -1,307 +1,173 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html>
 <head>
-    <meta charset="UTF-8">
+    <title>古今鐵道營業線 HGIS 查詢</title>
+    <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>古今鐵道營業線 HGIS 查詢系統</title>
-    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    
     <style>
-        /* =========================================
-           基本版面設定
-           ========================================= */
-        body, html {
-            margin: 0;
-            padding: 0;
-            height: 100%;
-            font-family: '微軟正黑體', 'PingFang TC', Arial, sans-serif;
-            background-color: #f8f9fa;
-        }
-        #map {
-            width: 100vw;
-            height: 100%;
-        }
-
-        /* =========================================
-           右上角藍底系統標題
-           ========================================= */
-        #system-title {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            background-color: rgba(26, 35, 126, 0.9);
-            color: white;
-            padding: 10px 18px;
-            border-radius: 25px;
-            font-size: 16px;
-            font-weight: bold;
-            z-index: 1000;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-            letter-spacing: 1px;
-            pointer-events: none;
-        }
-
-        /* =========================================
-           動態伸縮搜尋列
-           ========================================= */
-        #custom-search-box {
-            position: absolute;
-            top: 15px;
-            left: 60px;
-            background-color: white;
-            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23666"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>');
-            background-repeat: no-repeat;
-            background-position: 12.5px center;
-            background-size: 20px;
-            z-index: 1000;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-            width: 45px; 
-            height: 45px;
-            border-radius: 25px;
-            overflow: visible; 
-            transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
-            cursor: pointer;
-        }
-
-        #custom-search-box.expanded {
-            width: 320px;
-            border-radius: 8px;
-            cursor: text;
-        }
-
-        #custom-search-box:not(.expanded) input {
-            opacity: 0;
-            pointer-events: none;
-        }
-
-        #custom-search-box.expanded input {
-            opacity: 1;
-            pointer-events: auto;
-        }
-
-        #custom-search-box input {
-            width: 100%;
-            height: 45px;
-            border: none;
-            outline: none;
-            background-color: transparent;
-            padding-left: 40px;
-            padding-right: 35px; /* 留空間給叉叉按鈕 */
-            font-size: 16px;
-            box-sizing: border-box;
-        }
-
-        /* 叉叉清除按鈕 */
-        #clearBtn {
-            position: absolute;
-            right: 10px;
-            top: 12px;
-            font-size: 20px;
-            color: #999;
-            cursor: pointer;
-            display: none; /* 預設隱藏 */
-            z-index: 1002;
-            width: 20px;
-            height: 20px;
-            line-height: 18px;
-            text-align: center;
-        }
+        body { padding: 0; margin: 0; font-family: "Microsoft JhengHei", "PingFang TC", sans-serif; background: #f8f9fa; }
+        html, body, #map { height: 100%; width: 100vw; }
         
-        #clearBtn:hover {
-            color: #333;
+        /* 系統標題恢復為純展示 */
+        #system-title { 
+            position: absolute; top: 15px; right: 15px; z-index: 1000; 
+            background: rgba(26, 35, 126, 0.9); color: white; padding: 8px 20px; 
+            border-radius: 25px; font-weight: bold; font-size: 16px; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3); 
+            pointer-events: none; 
+            letter-spacing: 1px; 
         }
 
-        /* 收合時強制隱藏叉叉 */
-        #custom-search-box:not(.expanded) #clearBtn {
-            display: none !important;
-        }
+        #custom-search-box { position: absolute; top: 15px; left: 15px; z-index: 1000; width: 320px; }
+        .search-bar { background: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border-radius: 12px; display: flex; align-items: center; padding: 5px 15px; }
+        .search-bar input { border: none; outline: none; flex-grow: 1; font-size: 16px; padding: 12px 0; color: #333; background: transparent; }
+        
+        /* ⓧ 按鈕樣式 */
+        #clearSearch { cursor: pointer; color: #ccc; font-size: 22px; padding: 0 5px; display: none; line-height: 1; transition: color 0.2s; }
+        #clearSearch:hover { color: #1a237e; }
 
-        /* 搜尋結果選單 */
-        #searchDropdown {
-            position: absolute;
-            top: 55px;
-            left: 0;
-            width: 100%;
-            background: white;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            border-radius: 5px;
-            display: none;
-            max-height: 300px;
-            overflow-y: auto;
-            z-index: 1001;
+        .search-dropdown { background: #fff; box-shadow: 0 8px 24px rgba(0,0,0,0.15); border-radius: 12px; margin-top: 10px; max-height: 400px; overflow-y: auto; display: none; padding: 8px 0; list-style: none; }
+        .search-dropdown li { padding: 12px 20px; border-bottom: 1px solid #f0f0f0; font-size: 15px; cursor: pointer; }
+        .search-dropdown li:hover { background-color: #e8eaf6; color: #1a237e; font-weight: bold; }
+        
+        /* 💡 移除了隱藏圖層控制按鈕的程式碼，並稍微美化它的字體 */
+        .leaflet-control-layers { 
+            font-family: "Microsoft JhengHei", "PingFang TC", sans-serif; 
+            font-size: 14px; 
+            border-radius: 8px !important;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2) !important;
+            padding: 5px;
         }
-
-        .search-item {
-            padding: 12px 15px;
-            cursor: pointer;
-            border-bottom: 1px solid #eee;
-            font-size: 15px;
-            color: #333;
-        }
-
-        .search-item:hover {
-            background-color: #f0f4ff;
-            color: #1a237e;
-        }
-
-        /* =========================================
-           手機版自適應
-           ========================================= */
-        @media (max-width: 768px) {
-            #custom-search-box.expanded {
-                width: calc(100% - 75px) !important;
-                left: 60px !important;
-            }
-
-            #system-title {
-                top: auto !important;
-                bottom: 30px !important;
-                left: 50% !important;
-                right: auto !important;
-                transform: translateX(-50%);
-                font-size: 14px !important;
-                padding: 8px 15px;
-                white-space: nowrap;
-            }
-        }
+        .leaflet-control-attribution { display: none !important; }
+        
+        .custom-popup { min-width: 220px; line-height: 1.6; }
+        .popup-title { color: #1a237e; border-bottom: 2px solid #1a237e; margin-bottom: 10px; font-weight: bold; font-size: 18px; padding-bottom: 5px; }
+        .popup-info { font-size: 14px; color: #444; }
+        .popup-label { font-weight: bold; color: #666; margin-right: 5px; }
     </style>
 </head>
 <body>
-
+    <div id="map"></div>
     <div id="system-title">古今鐵道營業線 HGIS 查詢</div>
-
     <div id="custom-search-box">
-        <input type="text" id="searchInput" placeholder="搜尋路線名稱..." autocomplete="off">
-        <span id="clearBtn" title="清除">&times;</span>
-        <div id="searchDropdown"></div>
+        <div class="search-bar">
+            <input type="text" id="searchInput" placeholder="點擊顯示清單..." autocomplete="off">
+            <div id="clearSearch">&times;</div>
+        </div>
+        <ul id="searchList" class="search-dropdown"></ul>
     </div>
 
-    <div id="map"></div>
-
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    
     <script>
-        const map = L.map('map').setView([23.6978, 120.9605], 7);
+        // 定義底圖
+        var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
+        
+        // 定義歷史疊圖 (透明度設為 0.85 方便比對)
+        var sinica1904 = L.tileLayer('https://gis.sinica.edu.tw/tileserver/file-exists.php?img=JM20K_1904-jpg-{z}-{x}-{y}', { maxZoom: 18, opacity: 0.85 });
+        
+        // 初始化地圖，預設只載入 OSM
+        var map = L.map('map', { zoomControl: false, layers: [osm] }).setView([22.95, 120.25], 12);
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '&copy; OpenStreetMap'
-        }).addTo(map);
+        // =========================================
+        // 💡 找回右下角的圖層切換面板
+        // =========================================
+        var baseMaps = {
+            "現代地圖 (OSM)": osm
+        };
+        var overlayMaps = {
+            "1904 臺灣堡圖": sinica1904
+        };
+        
+        // collapsed: false 讓面板預設為「展開」狀態，非常明顯！
+        // position: 'bottomright' 固定在右下角
+        L.control.layers(baseMaps, overlayMaps, { position: 'bottomright', collapsed: false }).addTo(map);
 
-        let geojsonLayer;
-        let allFeatures = [];
-
-        fetch('data.json')
-            .then(response => response.json())
-            .then(rawData => {
-                const geoData = rawData.data || rawData; 
-                allFeatures = geoData.features;
-
-                geojsonLayer = L.geoJSON(geoData, {
-                    style: { color: "#ff7800", weight: 4, opacity: 0.8 },
-                    onEachFeature: function (feature, layer) {
-                        if (feature.properties) {
-                            let content = `<b>${feature.properties.name || '未命名'}</b>`;
-                            if (feature.properties.open_time) content += `<br>通車: ${feature.properties.open_time}`;
-                            layer.bindPopup(content);
-                        }
-                    }
-                }).addTo(map);
-
-                if (geojsonLayer.getBounds().isValid()) {
-                    map.fitBounds(geojsonLayer.getBounds());
-                }
-            })
-            .catch(err => {
-                console.error(err);
-                alert('資料載入失敗，請確認 data.json 格式。');
-            });
-
-        const searchBox = document.getElementById('custom-search-box');
-        const input = document.getElementById('searchInput');
-        const dropdown = document.getElementById('searchDropdown');
-        const clearBtn = document.getElementById('clearBtn'); 
-
-        function renderList(val) {
-            const keyword = val.trim().toLowerCase();
-            dropdown.innerHTML = '';
-
-            clearBtn.style.display = keyword.length > 0 ? 'block' : 'none';
-
-            const matched = (keyword === '') 
-                ? allFeatures 
-                : allFeatures.filter(f => f.properties && f.properties.name && f.properties.name.toLowerCase().includes(keyword));
-
-            if (keyword === '') {
-                if(geojsonLayer) geojsonLayer.setStyle({ color: "#ff7800", weight: 4, opacity: 0.8 });
-            }
-
-            if (matched.length > 0) {
-                dropdown.style.display = 'block';
-                matched.forEach(f => {
-                    const item = document.createElement('div');
-                    item.className = 'search-item';
-                    item.textContent = f.properties.name;
-                    item.onclick = () => {
-                        dropdown.style.display = 'none';
-                        input.value = f.properties.name;
-                        clearBtn.style.display = 'block'; 
-                        
-                        geojsonLayer.eachLayer(layer => {
-                            if (layer.feature === f) {
-                                layer.setStyle({ color: "red", weight: 7, opacity: 1 }); 
-                                if (layer.getBounds) map.fitBounds(layer.getBounds(), { padding: [50, 50] });
-                                layer.openPopup();
-                            } else {
-                                layer.setStyle({ color: "#ff7800", opacity: 0.4, weight: 3 });
-                            }
-                        });
-                    };
-                    dropdown.appendChild(item);
-                });
-            } else {
-                dropdown.style.display = 'none';
-            }
+        var searchData = [];
+        
+        function getLatinPart(str) {
+            var match = str.match(/[a-zA-Z].*/);
+            return match ? match[0].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') : str;
         }
 
-        // 💡 修改點：點選叉叉按鈕時，直接收合搜尋框
-        clearBtn.onclick = function(e) {
-            e.stopPropagation(); // 避免觸發搜尋框展開
-            input.value = ''; // 清除文字
-            this.style.display = 'none'; // 隱藏叉叉
-            dropdown.style.display = 'none'; // 隱藏下拉選單
-            
-            // 恢復地圖所有路線
-            if(geojsonLayer) geojsonLayer.setStyle({ color: "#ff7800", weight: 4, opacity: 0.8 }); 
-            
-            // 移除 expanded 類別，讓搜尋框縮小
-            searchBox.classList.remove('expanded');
-        };
+        function normalizeString(str) { return str ? str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') : ''; }
 
-        searchBox.onclick = function(e) {
-            if (!this.classList.contains('expanded')) {
-                this.classList.add('expanded');
-                input.focus();
-            }
-        };
+        fetch('data.json').then(res => res.json()).then(rawData => {
+            L.geoJSON(rawData.data, {
+                style: function() { return { color: "#1a237e", weight: 5, opacity: 0.7 }; },
+                onEachFeature: function (f, l) {
+                    var name = f.properties.name || "未命名線路";
+                    var zhDesc = f.properties.description?.zh || "暫無歷史描述。";
+                    var updateDate = f.properties.last_updated || "未知";
+                    var source = f.properties.source || "考據中";
 
-        input.onfocus = input.onclick = input.oninput = function() {
-            renderList(this.value);
-        };
-
-        document.addEventListener('click', function(e) {
-            if (!searchBox.contains(e.target)) {
-                if (input.value.trim() === '') {
-                    searchBox.classList.remove('expanded');
-                    dropdown.style.display = 'none';
-                } else {
-                    dropdown.style.display = 'none';
+                    var popupContent = `
+                        <div class="custom-popup">
+                            <div class="popup-title">${name}</div>
+                            <div class="popup-info">
+                                <span class="popup-label">歷史簡介:</span> ${zhDesc}<br>
+                                <span class="popup-label">資料來源:</span> ${source}<br>
+                                <span class="popup-label">最後更新:</span> ${updateDate}
+                            </div>
+                        </div>
+                    `;
+                    l.bindPopup(popupContent);
+                    searchData.push({ name: name, layer: l });
                 }
-            }
-        });
+            }).addTo(map);
 
-        map.on('click', () => dropdown.style.display = 'none');
+            var input = document.getElementById('searchInput'), dropdown = document.getElementById('searchList');
+            var clearBtn = document.getElementById('clearSearch');
+
+            function renderList(val) {
+                searchData.sort((a, b) => getLatinPart(a.name).localeCompare(getLatinPart(b.name), 'en'));
+                dropdown.innerHTML = '';
+                var has = false;
+                var cleanVal = normalizeString(val);
+
+                clearBtn.style.display = val.length > 0 ? 'block' : 'none';
+
+                searchData.forEach(item => {
+                    if (cleanVal === '' || normalizeString(item.name).includes(cleanVal)) {
+                        has = true;
+                        var li = document.createElement('li');
+                        li.textContent = item.name;
+                        li.onclick = function() {
+                            item.layer.getBounds ? map.fitBounds(item.layer.getBounds(), { padding: [50, 50] }) : map.setView(item.layer.getLatLng(), 15);
+                            item.layer.openPopup(); 
+                            dropdown.style.display = 'none'; 
+                            input.value = item.name;
+                            clearBtn.style.display = 'block';
+
+                            // 視覺聚焦功能
+                            searchData.forEach(d => {
+                                if (d.name === item.name) {
+                                    d.layer.setStyle({ color: "red", weight: 7, opacity: 1 });
+                                } else {
+                                    d.layer.setStyle({ color: "#1a237e", weight: 5, opacity: 0.3 });
+                                }
+                            });
+                        };
+                        dropdown.appendChild(li);
+                    }
+                });
+                dropdown.style.display = has ? 'block' : 'none';
+            }
+
+            clearBtn.onclick = function() {
+                input.value = '';
+                this.style.display = 'none';
+                renderList('');
+                dropdown.style.display = 'none'; 
+                
+                searchData.forEach(d => {
+                    d.layer.setStyle({ color: "#1a237e", weight: 5, opacity: 0.7 });
+                });
+            };
+
+            input.onfocus = input.onclick = input.oninput = function() { renderList(this.value); };
+            map.on('click', () => dropdown.style.display = 'none');
+        });
     </script>
 </body>
 </html>
