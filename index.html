@@ -63,6 +63,18 @@
         .search-item { padding: 12px 15px; cursor: pointer; border-bottom: 1px solid #eee; font-size: 15px; color: #333; }
         .search-item:hover { background-color: #f0f4ff; color: #1a237e; }
 
+        /* 👇 新增：字首標題的樣式 (具備吸附置頂效果) */
+        .search-letter-header {
+            padding: 4px 15px;
+            background-color: #e0e0e0;
+            color: #555;
+            font-weight: bold;
+            font-size: 13px;
+            position: sticky;
+            top: 0;           /* 讓標題在捲動時吸附在頂部 */
+            z-index: 10;      /* 確保標題不會被底下的選項蓋住 */
+        }
+
         /* 圖層面板美化 */
         .leaflet-control-layers {
             font-family: '微軟正黑體', 'PingFang TC', Arial, sans-serif;
@@ -198,11 +210,27 @@
 
             if (matched.length > 0) {
                 dropdown.style.display = 'block';
+                
+                let currentLetter = ''; // 💡 新增：用來記錄目前跑到哪個字母
+
                 matched.forEach(f => {
+                    // 👇 新增：抓取拼音的第一個字母 (轉大寫)，如果沒有拼音就歸類到 '#'
+                    const tailoStr = f.properties.tailo || "";
+                    const firstChar = tailoStr.charAt(0).toUpperCase() || "#";
+
+                    // 👇 新增：如果遇到新的字母，就在清單中安插一個標題區塊
+                    if (firstChar !== currentLetter) {
+                        currentLetter = firstChar;
+                        const headerItem = document.createElement('div');
+                        headerItem.className = 'search-letter-header';
+                        headerItem.textContent = currentLetter;
+                        dropdown.appendChild(headerItem);
+                    }
+
                     const item = document.createElement('div');
                     item.className = 'search-item';
                     
-                    // 👇 [精準抽換]：區分路線名稱與區間名稱的樣式
+                    // 區分路線名稱與區間名稱的樣式
                     const lineName = f.properties.name || '未命名';
                     const sectionName = f.properties.section || '';
                     if (sectionName) {
