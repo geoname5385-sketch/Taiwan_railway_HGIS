@@ -202,12 +202,18 @@
                     const item = document.createElement('div');
                     item.className = 'search-item';
                     
-                    // 視覺只顯示漢字 name
-                    item.textContent = f.properties.name;
+                    // 👇 [精準抽換]：區分路線名稱與區間名稱的樣式
+                    const lineName = f.properties.name || '未命名';
+                    const sectionName = f.properties.section || '';
+                    if (sectionName) {
+                        item.innerHTML = `${lineName}<span style="font-size: 12px; color: #999; margin-left: 10px;">${sectionName}</span>`;
+                    } else {
+                        item.textContent = lineName;
+                    }
                     
                     item.onclick = () => {
                         dropdown.style.display = 'none';
-                        input.value = f.properties.name;
+                        input.value = lineName;
                         clearBtn.style.display = 'block'; 
                         
                         geojsonLayer.eachLayer(layer => {
