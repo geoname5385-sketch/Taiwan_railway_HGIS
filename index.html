@@ -76,6 +76,19 @@
             z-index: 10;      
         }
 
+        /* 🎲 隨機探索按鈕 (v7.1 新增) */
+        #randomBtn {
+            position: absolute; top: 70px; left: 60px; z-index: 1000;
+            background-color: white; color: #1a237e;
+            width: 45px; height: 45px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 22px; cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+        }
+        #randomBtn:hover { background-color: #f0f4ff; transform: scale(1.05); }
+        #randomBtn:active { transform: scale(0.95); }
+
         /* 圖層面板美化 */
         .leaflet-control-layers {
             font-family: '微軟正黑體', 'PingFang TC', Arial, sans-serif;
@@ -101,6 +114,8 @@
         <span id="clearBtn" title="清除">&times;</span>
         <div id="searchDropdown"></div>
     </div>
+
+    <div id="randomBtn" title="隨機探索一條路線">🎲</div>
 
     <div id="map"></div>
 
@@ -260,17 +275,14 @@
         clearBtn.onclick = function(e) {
             e.stopPropagation();
             if (input.value.length > 0) {
-                // 有字：清空文字，重置地圖樣式，不縮回
                 input.value = '';
                 renderList('');
                 if(geojsonLayer) geojsonLayer.setStyle({ color: "#ff7800", weight: 4, opacity: 0.8 }); 
                 
-                // 👇 桌機版自動聚焦
                 if (window.innerWidth > 768) {
                     input.focus();
                 }
             } else {
-                // 沒字：縮回小圓球
                 searchBox.classList.remove('expanded');
                 dropdown.style.display = 'none';
                 this.style.display = 'none';
@@ -283,7 +295,6 @@
                 clearBtn.style.display = 'block'; 
                 renderList(''); 
                 
-                // 👇 桌機版自動聚焦
                 if (window.innerWidth > 768) {
                     input.focus();
                 }
@@ -305,10 +316,47 @@
 
         map.on('click', () => dropdown.style.display = 'none');
 
-        // 監聽下拉選單的滑動事件，滑動時自動收合鍵盤
         dropdown.addEventListener('scroll', function() {
             input.blur();
         }, { passive: true });
+
+        // 👇 v7.1 核心邏輯：🎲 隨機探索按鈕
+        const randomBtn = document.getElementById('randomBtn');
+        randomBtn.onclick = function(e) {
+            e.stopPropagation();
+            if (allFeatures.length === 0) return;
+
+            // 收合介面，確保視覺乾淨
+            input.blur();
+            searchBox.classList.remove('expanded');
+            dropdown.style.display = 'none';
+
+            // 隨機抽選一條路線
+            const randomIndex = Math.floor(Math.random() * allFeatures.length);
+            const randomFeature = allFeatures[randomIndex];
+
+            // 更新輸入框狀態
+            const lineName = randomFeature.properties.name || '未命名';
+            input.value = lineName;
+            clearBtn.style.display = 'block';
+
+            // 地圖連動與動畫
+            geojsonLayer.eachLayer(layer => {
+                if (layer.feature === randomFeature) {
+                    layer.setStyle({ color: "red", weight: 8, opacity: 1 });
+                    if (layer.bringToFront) layer.bringToFront();
+                    
+                    // 使用 flyToBounds 創造「時空旅行」的滑翔動畫感
+                    if (layer.getBounds) {
+                        map.flyToBounds(layer.getBounds(), { padding: [50, 50], duration: 1.5 });
+                    }
+                    layer.openPopup();
+                } else {
+                    layer.setStyle({ color: "#ff7800", opacity: 0.8, weight: 4 });
+                }
+            });
+        };
+
     </script>
 </body>
 </html>
