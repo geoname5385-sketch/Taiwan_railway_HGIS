@@ -73,7 +73,7 @@
         @media (max-width: 768px) {
             #custom-search-box.expanded { width: calc(100% - 75px) !important; left: 60px !important; }
             #system-title {
-                top: auto !important; bottom: 30px !important; left: 50% !important; right: auto !important;
+                top: auto !important; bottom: 40px !important; left: 50% !important; right: auto !important;
                 transform: translateX(-50%); font-size: 14px !important; padding: 8px 15px; white-space: nowrap;
             }
         }
@@ -107,11 +107,11 @@
             layers: [osm] 
         }).setView([23.6978, 120.9605], 7);
 
-        // 3. 加入右下角圖層控制面板 (預設展開)
+        // 3. 加入右下角圖層控制面板 (預設展開改為收合)
         L.control.layers(
             { "現代地圖 (OSM)": osm },
             { "1904 臺灣堡圖": sinica1904 },
-            { position: 'bottomright', collapsed: false }
+            { position: 'bottomright', collapsed: true }
         ).addTo(map);
 
         let geojsonLayer;
