@@ -58,7 +58,7 @@
         #searchDropdown {
             position: absolute; top: 55px; left: 0; width: 100%; background: white;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-radius: 5px; display: none;
-            max-height: 50dvh; /* 💡 更新：使用 dvh 避免鍵盤擋住選單 */
+            max-height: 50dvh; 
             overflow-y: auto; z-index: 1001;
         }
         .search-item { padding: 12px 15px; cursor: pointer; border-bottom: 1px solid #eee; font-size: 15px; color: #333; }
@@ -260,11 +260,13 @@
         clearBtn.onclick = function(e) {
             e.stopPropagation();
             if (input.value.length > 0) {
+                // 有字：清空文字，重置地圖樣式，不縮回
                 input.value = '';
                 renderList('');
                 if(geojsonLayer) geojsonLayer.setStyle({ color: "#ff7800", weight: 4, opacity: 0.8 }); 
-                input.focus();
+                // 👇 [核心修正]：移除 input.focus()，避免清空時自動彈出鍵盤
             } else {
+                // 沒字：縮回小圓球
                 searchBox.classList.remove('expanded');
                 dropdown.style.display = 'none';
                 this.style.display = 'none';
@@ -274,9 +276,9 @@
         searchBox.onclick = function(e) {
             if (!this.classList.contains('expanded')) {
                 this.classList.add('expanded');
-                // input.focus(); // 💡 更新：展開時不自動聚焦，避免 iPhone 召喚鍵盤
+                // 展開時不自動聚焦，由使用者點擊輸入框才彈出鍵盤
                 clearBtn.style.display = 'block'; 
-                renderList(''); // 💡 更新：展開時主動顯示完整清單
+                renderList(''); 
             }
         };
 
@@ -295,7 +297,7 @@
 
         map.on('click', () => dropdown.style.display = 'none');
 
-        // 💡 更新：監聽下拉選單的滑動事件，滑動時自動收合鍵盤 (達成原生 App 效果)
+        // 監聽下拉選單的滑動事件，滑動時自動收合鍵盤
         dropdown.addEventListener('scroll', function() {
             input.blur();
         }, { passive: true });
