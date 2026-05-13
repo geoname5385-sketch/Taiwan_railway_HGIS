@@ -58,12 +58,13 @@
         #searchDropdown {
             position: absolute; top: 55px; left: 0; width: 100%; background: white;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-radius: 5px; display: none;
-            max-height: 300px; overflow-y: auto; z-index: 1001;
+            max-height: 50dvh; /* 💡 更新：使用 dvh 避免鍵盤擋住選單 */
+            overflow-y: auto; z-index: 1001;
         }
         .search-item { padding: 12px 15px; cursor: pointer; border-bottom: 1px solid #eee; font-size: 15px; color: #333; }
         .search-item:hover { background-color: #f0f4ff; color: #1a237e; }
 
-        /* 👇 新增：字首標題的樣式 (具備吸附置頂效果) */
+        /* 字首標題的樣式 (具備吸附置頂效果) */
         .search-letter-header {
             padding: 4px 15px;
             background-color: #e0e0e0;
@@ -71,8 +72,8 @@
             font-weight: bold;
             font-size: 13px;
             position: sticky;
-            top: 0;           /* 讓標題在捲動時吸附在頂部 */
-            z-index: 10;      /* 確保標題不會被底下的選項蓋住 */
+            top: 0;           
+            z-index: 10;      
         }
 
         /* 圖層面板美化 */
@@ -180,14 +181,11 @@
             const keyword = val.trim().toLowerCase();
             dropdown.innerHTML = '';
             
-            // 只要搜尋列展開，ⓧ 就保持顯示作為收合按鈕
             clearBtn.style.display = 'block';
 
-            // 正規化小工具：去除台羅拼音音調符號 (例如將 Liông 變成 liong)
             const normalize = str => str ? str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') : '';
             const cleanKeyword = normalize(keyword);
 
-            // 過濾：同時比對漢字 (name) 與台羅 (tailo)
             let matched = (keyword === '') 
                 ? [...allFeatures] 
                 : allFeatures.filter(f => {
@@ -197,7 +195,6 @@
                     return nameMatch || tailoMatch;
                 });
 
-            // 排序：依照 tailo (台羅) A-Z 排列
             matched.sort((a, b) => {
                 const tA = a.properties.tailo || "";
                 const tB = b.properties.tailo || "";
@@ -211,14 +208,12 @@
             if (matched.length > 0) {
                 dropdown.style.display = 'block';
                 
-                let currentLetter = ''; // 💡 新增：用來記錄目前跑到哪個字母
+                let currentLetter = ''; 
 
                 matched.forEach(f => {
-                    // 👇 新增：抓取拼音的第一個字母 (轉大寫)，如果沒有拼音就歸類到 '#'
                     const tailoStr = f.properties.tailo || "";
                     const firstChar = tailoStr.charAt(0).toUpperCase() || "#";
 
-                    // 👇 新增：如果遇到新的字母，就在清單中安插一個標題區塊
                     if (firstChar !== currentLetter) {
                         currentLetter = firstChar;
                         const headerItem = document.createElement('div');
@@ -230,7 +225,6 @@
                     const item = document.createElement('div');
                     item.className = 'search-item';
                     
-                    // 區分路線名稱與區間名稱的樣式
                     const lineName = f.properties.name || '未命名';
                     const sectionName = f.properties.section || '';
                     if (sectionName) {
@@ -266,13 +260,11 @@
         clearBtn.onclick = function(e) {
             e.stopPropagation();
             if (input.value.length > 0) {
-                // 有字：清空文字，重置地圖樣式，不縮回
                 input.value = '';
                 renderList('');
                 if(geojsonLayer) geojsonLayer.setStyle({ color: "#ff7800", weight: 4, opacity: 0.8 }); 
                 input.focus();
             } else {
-                // 沒字：縮回小圓球
                 searchBox.classList.remove('expanded');
                 dropdown.style.display = 'none';
                 this.style.display = 'none';
@@ -282,8 +274,9 @@
         searchBox.onclick = function(e) {
             if (!this.classList.contains('expanded')) {
                 this.classList.add('expanded');
-                input.focus();
+                // input.focus(); // 💡 更新：展開時不自動聚焦，避免 iPhone 召喚鍵盤
                 clearBtn.style.display = 'block'; 
+                renderList(''); // 💡 更新：展開時主動顯示完整清單
             }
         };
 
@@ -301,6 +294,11 @@
         });
 
         map.on('click', () => dropdown.style.display = 'none');
+
+        // 💡 更新：監聽下拉選單的滑動事件，滑動時自動收合鍵盤 (達成原生 App 效果)
+        dropdown.addEventListener('scroll', function() {
+            input.blur();
+        }, { passive: true });
     </script>
 </body>
 </html>
