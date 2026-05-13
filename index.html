@@ -1,17 +1,183 @@
-function renderList(val) {
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>古今鐵道營業線 HGIS 查詢系統</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        body, html {
+            margin: 0; padding: 0; height: 100%;
+            font-family: '微軟正黑體', 'PingFang TC', Arial, sans-serif;
+            background-color: #f8f9fa;
+        }
+        #map { width: 100vw; height: 100%; }
+
+        /* 右上角系統標題 */
+        #system-title {
+            position: absolute; top: 15px; right: 15px; z-index: 1000;
+            background-color: rgba(26, 35, 126, 0.9); color: white;
+            padding: 10px 18px; border-radius: 25px;
+            font-size: 16px; font-weight: bold;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3); pointer-events: none;
+        }
+
+        /* 動態伸縮搜尋列 */
+        #custom-search-box {
+            position: absolute; top: 15px; left: 60px; z-index: 1000;
+            background-color: white;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23666"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>');
+            background-repeat: no-repeat; background-position: 12.5px center; background-size: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            width: 45px; height: 45px; border-radius: 25px;
+            overflow: visible; transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            cursor: pointer;
+        }
+
+        #custom-search-box.expanded { width: 320px; border-radius: 8px; cursor: text; }
+        #custom-search-box:not(.expanded) input { opacity: 0; pointer-events: none; }
+        #custom-search-box.expanded input { opacity: 1; pointer-events: auto; }
+
+        #custom-search-box input {
+            width: 100%; height: 45px; border: none; outline: none; background: transparent;
+            padding-left: 40px; padding-right: 35px; font-size: 16px; box-sizing: border-box;
+        }
+
+        /* ⓧ 按鈕 */
+        #clearBtn {
+            position: absolute; right: 10px; top: 12px; font-size: 20px; color: #999;
+            cursor: pointer; display: none; z-index: 1002; width: 20px; height: 20px;
+            line-height: 18px; text-align: center;
+        }
+        #clearBtn:hover { color: #333; }
+        #custom-search-box:not(.expanded) #clearBtn { display: none !important; }
+
+        /* 搜尋選單 */
+        #searchDropdown {
+            position: absolute; top: 55px; left: 0; width: 100%; background: white;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-radius: 5px; display: none;
+            max-height: 300px; overflow-y: auto; z-index: 1001;
+        }
+        .search-item { padding: 12px 15px; cursor: pointer; border-bottom: 1px solid #eee; font-size: 15px; color: #333; }
+        .search-item:hover { background-color: #f0f4ff; color: #1a237e; }
+
+        /* 圖層面板美化 */
+        .leaflet-control-layers {
+            font-family: '微軟正黑體', 'PingFang TC', Arial, sans-serif;
+            border-radius: 8px !important; box-shadow: 0 4px 10px rgba(0,0,0,0.2) !important; padding: 5px;
+        }
+
+        /* 手機版排版 */
+        @media (max-width: 768px) {
+            #custom-search-box.expanded { width: calc(100% - 75px) !important; left: 60px !important; }
+            #system-title {
+                top: auto !important; bottom: 40px !important; left: 50% !important; right: auto !important;
+                transform: translateX(-50%); font-size: 14px !important; padding: 8px 15px; white-space: nowrap;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="system-title">古今鐵道營業線 HGIS 查詢</div>
+
+    <div id="custom-search-box">
+        <input type="text" id="searchInput" placeholder="搜尋路線名稱..." autocomplete="off">
+        <span id="clearBtn" title="清除">&times;</span>
+        <div id="searchDropdown"></div>
+    </div>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script>
+        // 1. 設定底圖與歷史疊圖
+        const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' });
+        const sinica1904 = L.tileLayer('https://gis.sinica.edu.tw/tileserver/file-exists.php?img=JM20K_1904-jpg-{z}-{x}-{y}', { maxZoom: 18, opacity: 0.85 });
+
+        // 2. 初始化地圖 (使用 Canvas 渲染器並設定點擊寬容度)
+        const myRenderer = L.canvas({ tolerance: 15 }); 
+
+        const map = L.map('map', { 
+            renderer: myRenderer,
+            layers: [osm] 
+        }).setView([23.6978, 120.9605], 7);
+
+        // 3. 加入右下角圖層控制面板 (預設收合)
+        L.control.layers(
+            { "現代地圖 (OSM)": osm },
+            { "1904 臺灣堡圖": sinica1904 },
+            { position: 'bottomright', collapsed: true }
+        ).addTo(map);
+
+        let geojsonLayer;
+        let allFeatures = [];
+
+        // 4. 讀取資料
+        fetch('data.json')
+            .then(response => response.json())
+            .then(rawData => {
+                const geoData = rawData.data || rawData; 
+                allFeatures = geoData.features;
+
+                geojsonLayer = L.geoJSON(geoData, {
+                    style: { color: "#ff7800", weight: 4, opacity: 0.8 },
+                    onEachFeature: function (feature, layer) {
+                        if (feature.properties) {
+                            let content = `<b>${feature.properties.name || '未命名'}</b>`;
+                            if (feature.properties.open_time) content += `<br>通車: ${feature.properties.open_time}`;
+                            layer.bindPopup(content);
+
+                            // 地圖路線點擊的雙向連動
+                            layer.on('click', function() {
+                                const input = document.getElementById('searchInput');
+                                const clearBtn = document.getElementById('clearBtn');
+                                
+                                if(input) input.value = feature.properties.name;
+                                if(clearBtn) clearBtn.style.display = 'block';
+
+                                geojsonLayer.eachLayer(l => {
+                                    if (l === layer) {
+                                        l.setStyle({ color: "red", weight: 8, opacity: 1 });
+                                        if (l.bringToFront) l.bringToFront(); 
+                                    } else {
+                                        l.setStyle({ color: "#ff7800", opacity: 0.8, weight: 4 });
+                                    }
+                                });
+                            });
+                        }
+                    }
+                }).addTo(map);
+
+                if (geojsonLayer.getBounds().isValid()) {
+                    map.fitBounds(geojsonLayer.getBounds());
+                }
+            })
+            .catch(err => alert('資料載入失敗，請確認 data.json 格式。'));
+
+        // 5. 搜尋功能邏輯
+        const searchBox = document.getElementById('custom-search-box');
+        const input = document.getElementById('searchInput');
+        const dropdown = document.getElementById('searchDropdown');
+        const clearBtn = document.getElementById('clearBtn'); 
+
+        function renderList(val) {
             const keyword = val.trim().toLowerCase();
             dropdown.innerHTML = '';
             
-            // 只要搜尋列展開，ⓧ 就保持顯示
+            // 只要搜尋列展開，ⓧ 就保持顯示作為收合按鈕
             clearBtn.style.display = 'block';
 
-            // 正規化小工具：去除台羅拼音音調符號
+            // 正規化小工具：去除台羅拼音音調符號 (例如將 Liông 變成 liong)
             const normalize = str => str ? str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') : '';
             const cleanKeyword = normalize(keyword);
 
-            // 1. 過濾資料：同時比對漢字與台羅 (隱形搜尋)
+            // 過濾：同時比對漢字 (name) 與台羅 (tailo)
             let matched = (keyword === '') 
-                ? [...allFeatures] // 如果沒打字，就抓出全部
+                ? [...allFeatures] 
                 : allFeatures.filter(f => {
                     if (!f.properties) return false;
                     const nameMatch = normalize(f.properties.name).includes(cleanKeyword);
@@ -19,11 +185,11 @@ function renderList(val) {
                     return nameMatch || tailoMatch;
                 });
 
-            // 2. 強制排序：依照 tailo (台羅拼音) 的 A-Z 字母順序排列
+            // 排序：依照 tailo (台羅) A-Z 排列
             matched.sort((a, b) => {
-                const tailoA = a.properties.tailo || "";
-                const tailoB = b.properties.tailo || "";
-                return tailoA.localeCompare(tailoB, 'en');
+                const tA = a.properties.tailo || "";
+                const tB = b.properties.tailo || "";
+                return tA.localeCompare(tB, 'en');
             });
 
             if (keyword === '') {
@@ -36,7 +202,7 @@ function renderList(val) {
                     const item = document.createElement('div');
                     item.className = 'search-item';
                     
-                    // 3. 視覺顯示：只呈現漢字 name，保持介面清爽
+                    // 視覺只顯示漢字 name
                     item.textContent = f.properties.name;
                     
                     item.onclick = () => {
@@ -61,3 +227,46 @@ function renderList(val) {
                 dropdown.style.display = 'none';
             }
         }
+
+        // ⓧ 按鈕兩段式邏輯
+        clearBtn.onclick = function(e) {
+            e.stopPropagation();
+            if (input.value.length > 0) {
+                // 有字：清空文字，重置地圖樣式，不縮回
+                input.value = '';
+                renderList('');
+                if(geojsonLayer) geojsonLayer.setStyle({ color: "#ff7800", weight: 4, opacity: 0.8 }); 
+                input.focus();
+            } else {
+                // 沒字：縮回小圓球
+                searchBox.classList.remove('expanded');
+                dropdown.style.display = 'none';
+                this.style.display = 'none';
+            }
+        };
+
+        searchBox.onclick = function(e) {
+            if (!this.classList.contains('expanded')) {
+                this.classList.add('expanded');
+                input.focus();
+                clearBtn.style.display = 'block'; 
+            }
+        };
+
+        input.onfocus = input.onclick = input.oninput = function() { renderList(this.value); };
+
+        document.addEventListener('click', function(e) {
+            if (!searchBox.contains(e.target)) {
+                if (input.value.trim() === '') {
+                    searchBox.classList.remove('expanded');
+                    dropdown.style.display = 'none';
+                } else {
+                    dropdown.style.display = 'none';
+                }
+            }
+        });
+
+        map.on('click', () => dropdown.style.display = 'none');
+    </script>
+</body>
+</html>
