@@ -15,7 +15,8 @@
           "status": "廢止",
           "period": "日治/戰後",
           "comment": "Imported from SHP (ID: 1)",
-          "tailo": "Liông-tiân-suànn"
+          "tailo": "Liông-tiân-suànn",
+          "section": ""
         },
         "geometry": {
           "type": "LineString",
@@ -832,7 +833,8 @@
           "tessellate": -1,
           "extrude": 0,
           "visibility": -1,
-          "tailo": "Ha̍k-kah-suànn"
+          "tailo": "Ha̍k-kah-suànn",
+          "section": ""
         },
         "geometry": {
           "type": "LineString",
@@ -1281,7 +1283,8 @@
           "tessellate": -1,
           "extrude": 0,
           "visibility": -1,
-          "tailo": "Káng-lîm-suànn"
+          "tailo": "Káng-lîm-suànn",
+          "section": ""
         },
         "geometry": {
           "type": "LineString",
@@ -2394,7 +2397,8 @@
           "tessellate": -1,
           "extrude": 0,
           "visibility": -1,
-          "tailo": "Kî-bué-suànn"
+          "tailo": "Kî-bué-suànn",
+          "section": ""
         },
         "geometry": {
           "type": "LineString",
@@ -3895,7 +3899,8 @@
           "tessellate": -1,
           "extrude": 0,
           "visibility": -1,
-          "tailo": "Lîng-nâ-suànn"
+          "tailo": "Lîng-nâ-suànn",
+          "section": ""
         },
         "geometry": {
           "type": "LineString",
@@ -4592,7 +4597,8 @@
           "tessellate": -1,
           "extrude": 0,
           "visibility": -1,
-          "tailo": "Kháu-ôo-suànn"
+          "tailo": "Kháu-ôo-suànn",
+          "section": ""
         },
         "geometry": {
           "type": "LineString",
@@ -4969,7 +4975,8 @@
           "tessellate": -1,
           "extrude": 0,
           "visibility": -1,
-          "tailo": "Pak-kàng-suànn（虎尾北港間）"
+          "tailo": "Pak-kàng-suànn",
+          "section": "北港＝虎尾"
         },
         "geometry": {
           "type": "LineString",
@@ -5822,7 +5829,8 @@
           "tessellate": -1,
           "extrude": 0,
           "visibility": -1,
-          "tailo": "Sai-lê-suànn"
+          "tailo": "Sai-lê-suànn",
+          "section": ""
         },
         "geometry": {
           "type": "LineString",
@@ -6427,7 +6435,8 @@
           "tessellate": -1,
           "extrude": 0,
           "visibility": -1,
-          "tailo": "Sann-tiâu-lūn-suànn"
+          "tailo": "Sann-tiâu-lūn-suànn",
+          "section": ""
         },
         "geometry": {
           "type": "LineString",
@@ -6904,7 +6913,8 @@
           "tessellate": -1,
           "extrude": 0,
           "visibility": -1,
-          "tailo": "Bâ-lî-kan-suànn"
+          "tailo": "Bâ-lî-kan-suànn",
+          "section": ""
         },
         "geometry": {
           "type": "LineString",
@@ -7209,7 +7219,8 @@
           "tessellate": -1,
           "extrude": 0,
           "visibility": -1,
-          "tailo": "Lūn-puè-suànn"
+          "tailo": "Lūn-puè-suànn",
+          "section": ""
         },
         "geometry": {
           "type": "LineString",
@@ -7810,7 +7821,8 @@
           "tessellate": -1,
           "extrude": 0,
           "visibility": -1,
-          "tailo": "Phoh-tsú-suànn"
+          "tailo": "Phoh-tsú-suànn",
+          "section": ""
         },
         "geometry": {
           "type": "LineString",
@@ -8307,7 +8319,8 @@
           "tessellate": -1,
           "extrude": 0,
           "visibility": -1,
-          "tailo": "Sió-buê-suànn"
+          "tailo": "Sió-buê-suànn",
+          "section": ""
         },
         "geometry": {
           "type": "LineString",
@@ -8836,7 +8849,8 @@
           "tessellate": -1,
           "extrude": 0,
           "visibility": -1,
-          "tailo": "Lâm-tsīng-suànn"
+          "tailo": "Lâm-tsīng-suànn",
+          "section": ""
         },
         "geometry": {
           "type": "LineString",
@@ -9169,7 +9183,8 @@
           "tessellate": -1,
           "extrude": 0,
           "visibility": -1,
-          "tailo": "Pak-kàng-suànn（嘉義北港間）"
+          "tailo": "Pak-kàng-suànn",
+          "section": "嘉義＝北港"
         },
         "geometry": {
           "type": "LineString",
@@ -9674,7 +9689,8 @@
           "tessellate": -1,
           "extrude": 0,
           "visibility": -1,
-          "tailo": "Kuan-biō-suànn"
+          "tailo": "Kuan-biō-suànn",
+          "section": ""
         },
         "geometry": {
           "type": "MultiLineString",
@@ -11257,7 +11273,8 @@
           "tessellate": -1,
           "extrude": 0,
           "visibility": -1,
-          "tailo": "Lí-káng-suànn"
+          "tailo": "Lí-káng-suànn",
+          "section": ""
         },
         "geometry": {
           "type": "MultiLineString",
@@ -12450,7 +12467,8 @@
           "tessellate": -1,
           "extrude": 0,
           "visibility": -1,
-          "tailo": "Tang-káng-suànn"
+          "tailo": "Tang-káng-suànn",
+          "section": ""
         },
         "geometry": {
           "type": "LineString",
