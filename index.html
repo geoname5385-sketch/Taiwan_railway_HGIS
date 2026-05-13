@@ -99,7 +99,13 @@
         const sinica1904 = L.tileLayer('https://gis.sinica.edu.tw/tileserver/file-exists.php?img=JM20K_1904-jpg-{z}-{x}-{y}', { maxZoom: 18, opacity: 0.85 });
 
         // 2. 初始化地圖
-        const map = L.map('map', { layers: [osm] }).setView([23.6978, 120.9605], 7);
+        // 👇 新增：建立 Canvas 渲染器，並設定點擊寬容度為 15 像素 (數字越大越好點)
+        const myRenderer = L.canvas({ tolerance: 15 }); 
+
+        const map = L.map('map', { 
+            renderer: myRenderer, // 👈 將渲染器套用到地圖上
+            layers: [osm] 
+        }).setView([23.6978, 120.9605], 7);
 
         // 3. 加入右下角圖層控制面板 (預設展開)
         L.control.layers(
