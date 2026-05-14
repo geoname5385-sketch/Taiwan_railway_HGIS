@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>古今鐵道營業線 HGIS 查詢系統 v8.2</title>
+    <title>古今鐵道營業線 HGIS 查詢系統 v8.4</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
@@ -15,7 +15,6 @@
         }
         #map { width: 100vw; height: 100%; }
 
-        /* 右上角系統標題 */
         #system-title {
             position: absolute; top: 15px; right: 15px; z-index: 1000;
             background-color: rgba(26, 35, 126, 0.9); color: white;
@@ -24,7 +23,6 @@
             box-shadow: 0 4px 10px rgba(0,0,0,0.3); pointer-events: none;
         }
 
-        /* 經典伸縮搜尋列 */
         #custom-search-box {
             position: absolute; top: 15px; left: 15px; z-index: 1000;
             background-color: white;
@@ -38,35 +36,39 @@
 
         #custom-search-box.expanded { width: 320px; border-radius: 8px; cursor: text; }
 
-        /* 🎯 v8.2 核心視覺優化：隱形真實輸入框，顯影疊加層 */
+        /* 隱形輸入框 */
         #custom-search-box input {
             width: 100%; height: 45px; border: none; outline: none; background: transparent;
             padding-left: 40px; padding-right: 45px; font-size: 16px; box-sizing: border-box;
-            color: transparent; /* 文字設為透明，但仍可輸入與選取 */
-            caret-color: #333;  /* 保持游標可見 */
+            color: transparent; 
+            caret-color: #333;  
             position: relative; z-index: 2;
             opacity: 0; pointer-events: none;
+            -webkit-appearance: none; appearance: none; margin: 0; 
+            font-family: inherit;
         }
         #custom-search-box.expanded input { opacity: 1; pointer-events: auto; }
+        #custom-search-box input::placeholder { color: transparent; }
+        #custom-search-box input::-webkit-input-placeholder { color: transparent; }
 
-        /* 🎯 v8.2：疊加層，用來顯示染色後的文字 */
+        /* 顯影疊加層 */
         #input-display-layer {
             position: absolute; left: 40px; top: 0; height: 45px; line-height: 45px;
             width: calc(100% - 85px); font-size: 16px; color: #333;
-            pointer-events: none; /* 讓點擊穿透到下方的 input */
-            white-space: nowrap; overflow: hidden;
+            pointer-events: none; 
+            white-space: pre; 
+            overflow: hidden;
             z-index: 1; opacity: 0;
+            font-family: inherit;
         }
         #custom-search-box.expanded #input-display-layer { opacity: 1; }
 
-        /* ⓧ 按鈕 (胖手指 45px 優化) */
         #clearBtn {
             position: absolute; right: 0; top: 0; font-size: 22px; color: #999;
             cursor: pointer; display: none; z-index: 1002; 
             width: 45px; height: 45px; line-height: 45px; text-align: center;
         }
 
-        /* 搜尋選單 */
         #searchDropdown {
             position: absolute; top: 55px; left: 0; width: 100%; background: white;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-radius: 5px; display: none;
@@ -78,7 +80,6 @@
         .random-item { background-color: #e8eaf6; color: #1a237e; font-weight: bold; text-align: center; border-bottom: 2px solid #c5cae9; }
         .search-letter-header { padding: 4px 15px; background-color: #e0e0e0; color: #555; font-weight: bold; font-size: 13px; position: sticky; top: 0; z-index: 10; }
 
-        /* 手機版適配 */
         @media (max-width: 768px) {
             #custom-search-box.expanded { width: calc(100% - 30px) !important; left: 15px !important; }
             #system-title { top: auto !important; bottom: 40px !important; left: 50% !important; transform: translateX(-50%); font-size: 14px !important; padding: 8px 15px; white-space: nowrap; }
@@ -92,7 +93,7 @@
 
     <div id="custom-search-box">
         <div id="input-display-layer"></div>
-        <input type="text" id="searchInput" placeholder="搜尋路線名稱..." autocomplete="off">
+        <input type="text" id="searchInput" autocomplete="off">
         <span id="clearBtn" title="清除">&times;</span>
         <div id="searchDropdown"></div>
     </div>
@@ -112,8 +113,11 @@
 
         let geojsonLayer;
         let allFeatures = [];
+        
+        // 🎯 v8.4 新增：用來記憶當前選中路線的資訊
+        let activeRouteName = '';
+        let activeRouteSection = '';
 
-        // 讀取資料
         fetch('data.json')
             .then(response => response.json())
             .then(rawData => {
@@ -131,11 +135,14 @@
                             layer.on('click', function() {
                                 const input = document.getElementById('searchInput');
                                 const clearBtn = document.getElementById('clearBtn');
-                                let displayName = feature.properties.name || '未命名';
-                                if (feature.properties.section) displayName += ` [${feature.properties.section}]`;
                                 
-                                input.value = displayName;
-                                syncDisplay(); // 🎯 同步顯示層
+                                // 🎯 v8.4：分開記憶名稱與區間
+                                activeRouteName = feature.properties.name || '未命名';
+                                activeRouteSection = feature.properties.section || '';
+                                
+                                input.value = activeRouteName; // 裡面只有純粹的名稱
+                                input.blur(); // 強制失去焦點，觸發小字浮現
+                                syncDisplay(); 
                                 clearBtn.style.display = 'block';
 
                                 geojsonLayer.eachLayer(l => {
@@ -159,20 +166,41 @@
         const dropdown = document.getElementById('searchDropdown');
         const clearBtn = document.getElementById('clearBtn'); 
 
-        // 🎯 v8.2 核心：同步染色函數
+        // 🎯 v8.4 核心渲染邏輯
         function syncDisplay() {
             const val = input.value;
-            // 使用正則表達式，把 [...] 括號內的內容包裹在灰色小字的 span 裡
-            displayLayer.innerHTML = val.replace(/\[(.*?)\]/g, '<span style="font-size:12px; color:#999; margin-left:5px;">[$1]</span>');
-            
-            // 如果輸入框是空的，顯示 placeholder (模擬效果)
             if (val === '') {
                 displayLayer.innerHTML = '<span style="color:#999; font-size:16px;">搜尋路線名稱...</span>';
+                return;
+            }
+
+            let safeVal = val.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            
+            // 判斷文字框是否正在被選取編輯中
+            const isFocused = (document.activeElement === input);
+            
+            // 只有在「未選取狀態」、且「名稱沒被改過」、且「有區間資料」時，才顯示區間小字
+            if (!isFocused && val === activeRouteName && activeRouteSection) {
+                let safeSection = activeRouteSection.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                displayLayer.innerHTML = `${safeVal} <span style="font-size:12px; color:#999; margin-left:5px;">[${safeSection}]</span>`;
+            } else {
+                // 正在打字編輯時，只顯示最乾淨的文字
+                displayLayer.innerHTML = safeVal;
             }
         }
 
+        // 監聽文字框的焦點事件，做到點擊瞬間切換
+        input.addEventListener('focus', function() {
+            syncDisplay(); // 焦點進入，小字瞬間消失
+            renderList(this.value);
+        });
+
+        input.addEventListener('blur', function() {
+            syncDisplay(); // 焦點離開，小字瞬間浮現
+        });
+
         function renderList(val) {
-            syncDisplay(); // 🎯 同步顯示層
+            syncDisplay(); 
             const keyword = val.trim().toLowerCase();
             dropdown.innerHTML = '';
             clearBtn.style.display = 'block';
@@ -199,12 +227,16 @@
                     randomItem.onclick = (e) => {
                         e.stopPropagation();
                         dropdown.style.display = 'none';
-                        input.blur();
+                        
                         const randomFeature = allFeatures[Math.floor(Math.random() * allFeatures.length)];
-                        let displayName = randomFeature.properties.name || '未命名';
-                        if (randomFeature.properties.section) displayName += ` [${randomFeature.properties.section}]`;
-                        input.value = displayName;
-                        syncDisplay(); // 🎯 同步顯示層
+                        
+                        // 🎯 紀錄狀態並收起鍵盤
+                        activeRouteName = randomFeature.properties.name || '未命名';
+                        activeRouteSection = randomFeature.properties.section || '';
+                        input.value = activeRouteName;
+                        input.blur(); 
+                        syncDisplay(); 
+                        
                         clearBtn.style.display = 'block';
                         geojsonLayer.eachLayer(layer => {
                             if (layer.feature === randomFeature) {
@@ -233,10 +265,17 @@
                     const lineName = f.properties.name || '未命名';
                     const sectionName = f.properties.section || '';
                     item.innerHTML = sectionName ? `${lineName}<span style="font-size:12px; color:#999; margin-left:10px;">${sectionName}</span>` : lineName;
+                    
                     item.onclick = () => {
                         dropdown.style.display = 'none';
-                        input.value = sectionName ? `${lineName} [${sectionName}]` : lineName;
-                        syncDisplay(); // 🎯 同步顯示層
+                        
+                        // 🎯 紀錄狀態並收起鍵盤
+                        activeRouteName = lineName;
+                        activeRouteSection = sectionName;
+                        input.value = activeRouteName;
+                        input.blur(); 
+                        syncDisplay(); 
+                        
                         clearBtn.style.display = 'block'; 
                         geojsonLayer.eachLayer(layer => {
                             if (layer.feature === f) {
@@ -251,11 +290,23 @@
             } else { dropdown.style.display = 'none'; }
         }
 
+        // 當使用者主動打字修改時，清除狀態
+        input.oninput = function() { 
+            if (this.value !== activeRouteName) {
+                activeRouteName = '';
+                activeRouteSection = '';
+            }
+            syncDisplay();
+            renderList(this.value); 
+        };
+
         clearBtn.onclick = function(e) {
             e.stopPropagation();
             if (input.value.length > 0) {
                 input.value = '';
-                syncDisplay(); // 🎯 同步顯示層
+                activeRouteName = '';
+                activeRouteSection = '';
+                syncDisplay(); 
                 renderList('');
                 if(geojsonLayer) geojsonLayer.setStyle({ color: "#ff7800", weight: 4, opacity: 0.8 }); 
                 if (window.innerWidth > 768) input.focus();
@@ -275,13 +326,13 @@
             }
         };
 
-        input.onfocus = input.onclick = input.oninput = function() { renderList(this.value); };
         document.addEventListener('click', function(e) {
             if (!searchBox.contains(e.target)) {
                 dropdown.style.display = 'none';
                 if (input.value.trim() === '') searchBox.classList.remove('expanded');
             }
         });
+        
         map.on('click', () => dropdown.style.display = 'none');
         dropdown.addEventListener('scroll', function() { input.blur(); }, { passive: true });
     </script>
