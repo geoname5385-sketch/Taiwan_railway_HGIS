@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>古今鐵道營業線 HGIS 查詢系統 v8.4</title>
+    <title>古今鐵道營業線 HGIS 查詢系統 v8.6</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
@@ -36,18 +36,22 @@
 
         #custom-search-box.expanded { width: 320px; border-radius: 8px; cursor: text; }
 
-        /* 隱形輸入框 */
+        /* 🎯 v8.6 核心修改：移除 pointer-events，利用原生點擊確保對焦 */
         #custom-search-box input {
             width: 100%; height: 45px; border: none; outline: none; background: transparent;
             padding-left: 40px; padding-right: 45px; font-size: 16px; box-sizing: border-box;
             color: transparent; 
             caret-color: #333;  
             position: relative; z-index: 2;
-            opacity: 0; pointer-events: none;
+            opacity: 0; 
+            cursor: pointer; /* 收合時顯示為點擊游標 */
             -webkit-appearance: none; appearance: none; margin: 0; 
             font-family: inherit;
         }
-        #custom-search-box.expanded input { opacity: 1; pointer-events: auto; }
+        #custom-search-box.expanded input { 
+            opacity: 1; 
+            cursor: text; /* 展開後恢復文字輸入游標 */
+        }
         #custom-search-box input::placeholder { color: transparent; }
         #custom-search-box input::-webkit-input-placeholder { color: transparent; }
 
@@ -113,8 +117,6 @@
 
         let geojsonLayer;
         let allFeatures = [];
-        
-        // 🎯 v8.4 新增：用來記憶當前選中路線的資訊
         let activeRouteName = '';
         let activeRouteSection = '';
 
@@ -136,12 +138,11 @@
                                 const input = document.getElementById('searchInput');
                                 const clearBtn = document.getElementById('clearBtn');
                                 
-                                // 🎯 v8.4：分開記憶名稱與區間
                                 activeRouteName = feature.properties.name || '未命名';
                                 activeRouteSection = feature.properties.section || '';
                                 
-                                input.value = activeRouteName; // 裡面只有純粹的名稱
-                                input.blur(); // 強制失去焦點，觸發小字浮現
+                                input.value = activeRouteName;
+                                input.blur(); 
                                 syncDisplay(); 
                                 clearBtn.style.display = 'block';
 
@@ -166,7 +167,6 @@
         const dropdown = document.getElementById('searchDropdown');
         const clearBtn = document.getElementById('clearBtn'); 
 
-        // 🎯 v8.4 核心渲染邏輯
         function syncDisplay() {
             const val = input.value;
             if (val === '') {
@@ -175,28 +175,28 @@
             }
 
             let safeVal = val.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-            
-            // 判斷文字框是否正在被選取編輯中
             const isFocused = (document.activeElement === input);
             
-            // 只有在「未選取狀態」、且「名稱沒被改過」、且「有區間資料」時，才顯示區間小字
             if (!isFocused && val === activeRouteName && activeRouteSection) {
                 let safeSection = activeRouteSection.replace(/</g, "&lt;").replace(/>/g, "&gt;");
                 displayLayer.innerHTML = `${safeVal} <span style="font-size:12px; color:#999; margin-left:5px;">[${safeSection}]</span>`;
             } else {
-                // 正在打字編輯時，只顯示最乾淨的文字
                 displayLayer.innerHTML = safeVal;
             }
         }
 
-        // 監聽文字框的焦點事件，做到點擊瞬間切換
+        // 🎯 v8.6 核心：將「展開」邏輯綁定到原生的 focus 事件
         input.addEventListener('focus', function() {
-            syncDisplay(); // 焦點進入，小字瞬間消失
+            if (!searchBox.classList.contains('expanded')) {
+                searchBox.classList.add('expanded');
+                clearBtn.style.display = 'block';
+            }
+            syncDisplay();
             renderList(this.value);
         });
 
         input.addEventListener('blur', function() {
-            syncDisplay(); // 焦點離開，小字瞬間浮現
+            syncDisplay(); 
         });
 
         function renderList(val) {
@@ -229,8 +229,6 @@
                         dropdown.style.display = 'none';
                         
                         const randomFeature = allFeatures[Math.floor(Math.random() * allFeatures.length)];
-                        
-                        // 🎯 紀錄狀態並收起鍵盤
                         activeRouteName = randomFeature.properties.name || '未命名';
                         activeRouteSection = randomFeature.properties.section || '';
                         input.value = activeRouteName;
@@ -268,8 +266,6 @@
                     
                     item.onclick = () => {
                         dropdown.style.display = 'none';
-                        
-                        // 🎯 紀錄狀態並收起鍵盤
                         activeRouteName = lineName;
                         activeRouteSection = sectionName;
                         input.value = activeRouteName;
@@ -290,7 +286,6 @@
             } else { dropdown.style.display = 'none'; }
         }
 
-        // 當使用者主動打字修改時，清除狀態
         input.oninput = function() { 
             if (this.value !== activeRouteName) {
                 activeRouteName = '';
@@ -309,7 +304,7 @@
                 syncDisplay(); 
                 renderList('');
                 if(geojsonLayer) geojsonLayer.setStyle({ color: "#ff7800", weight: 4, opacity: 0.8 }); 
-                if (window.innerWidth > 768) input.focus();
+                input.focus(); 
             } else {
                 searchBox.classList.remove('expanded');
                 dropdown.style.display = 'none';
@@ -317,13 +312,9 @@
             }
         };
 
+        // 🎯 點擊容器任何地方，直接由瀏覽器或 JS 接管對焦
         searchBox.onclick = function(e) {
-            if (!this.classList.contains('expanded')) {
-                this.classList.add('expanded');
-                clearBtn.style.display = 'block'; 
-                renderList(''); 
-                if (window.innerWidth > 768) input.focus();
-            }
+            input.focus(); 
         };
 
         document.addEventListener('click', function(e) {
