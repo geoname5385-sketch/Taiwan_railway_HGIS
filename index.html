@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>古今鐵道營業線 HGIS 查詢系統 v8.7</title>
+    <title>古今鐵道營業線 HGIS 查詢系統 v8.8</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
@@ -36,6 +36,7 @@
 
         #custom-search-box.expanded { width: 320px; border-radius: 8px; cursor: text; }
 
+        /* 隱形輸入框 */
         #custom-search-box input {
             width: 100%; height: 45px; border: none; outline: none; background: transparent;
             padding-left: 40px; padding-right: 45px; font-size: 16px; box-sizing: border-box;
@@ -45,6 +46,7 @@
         #custom-search-box.expanded input { opacity: 1; cursor: text; }
         #custom-search-box input::placeholder { color: transparent; }
 
+        /* 顯影疊加層 */
         #input-display-layer {
             position: absolute; left: 40px; top: 0; height: 45px; line-height: 45px;
             width: calc(100% - 85px); font-size: 16px; color: #333;
@@ -53,6 +55,7 @@
         }
         #custom-search-box.expanded #input-display-layer { opacity: 1; }
 
+        /* ⓧ 按鈕 (胖手指 45px 優化) */
         #clearBtn {
             position: absolute; right: 0; top: 0; font-size: 22px; color: #999;
             cursor: pointer; display: none; z-index: 1002; 
@@ -92,6 +95,7 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     
     <script>
+        // 1. 初始化地圖
         const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' });
         const sinica1904 = L.tileLayer('https://gis.sinica.edu.tw/tileserver/file-exists.php?img=JM20K_1904-jpg-{z}-{x}-{y}', { maxZoom: 18, opacity: 0.85 });
         const myRenderer = L.canvas({ tolerance: 15 }); 
@@ -105,6 +109,7 @@
         let activeRouteName = '';
         let activeRouteSection = '';
 
+        // 2. 讀取資料
         fetch('data.json')
             .then(response => response.json())
             .then(rawData => {
@@ -119,16 +124,17 @@
                             if (feature.properties.open_time) content += `<br>通車: ${feature.properties.open_time}`;
                             layer.bindPopup(content);
 
-                            layer.on('click', function() {
-                                // 🎯 v8.7 強制展開並更新
+                            layer.on('click', function(e) {
+                                // 🎯 v8.8 強制展開並離焦
                                 searchBox.classList.add('expanded');
                                 
                                 activeRouteName = feature.properties.name || '未命名';
                                 activeRouteSection = feature.properties.section || '';
                                 
                                 input.value = activeRouteName;
-                                input.blur(); 
-                                syncDisplay(); 
+                                // 使用 setTimeout 確保在點擊事件完全結束後才執行離焦
+                                setTimeout(() => { input.blur(); syncDisplay(); }, 0);
+                                
                                 clearBtn.style.display = 'block';
 
                                 geojsonLayer.eachLayer(l => {
@@ -152,6 +158,7 @@
         const dropdown = document.getElementById('searchDropdown');
         const clearBtn = document.getElementById('clearBtn'); 
 
+        // 🎯 核心渲染邏輯：依據對焦狀態決定是否顯示區間
         function syncDisplay() {
             const val = input.value;
             if (val === '') {
@@ -162,11 +169,12 @@
             let safeVal = val.replace(/</g, "&lt;").replace(/>/g, "&gt;");
             const isFocused = (document.activeElement === input);
             
-            // 🎯 v8.7 視覺微調：去除括號，改用空格
+            // 閱覽模式：顯示名稱 + 灰色區間 (不帶括號)
             if (!isFocused && val === activeRouteName && activeRouteSection) {
                 let safeSection = activeRouteSection.replace(/</g, "&lt;").replace(/>/g, "&gt;");
                 displayLayer.innerHTML = `${safeVal} <span style="font-size:12px; color:#999; margin-left:5px;">${safeSection}</span>`;
             } else {
+                // 編輯模式：只顯示乾淨的標題
                 displayLayer.innerHTML = safeVal;
             }
         }
@@ -206,17 +214,18 @@
                     const randomItem = document.createElement('div');
                     randomItem.className = 'search-item random-item';
                     randomItem.innerHTML = '🎲 隨機探索一條路線';
+                    
                     randomItem.onclick = (e) => {
-                        e.stopPropagation();
+                        e.stopPropagation(); // 🎯 關鍵修正：阻止事件冒泡到 searchBox
                         dropdown.style.display = 'none';
-                        searchBox.classList.add('expanded'); // 🎯 強制展開
+                        searchBox.classList.add('expanded');
                         
                         const f = allFeatures[Math.floor(Math.random() * allFeatures.length)];
                         activeRouteName = f.properties.name || '未命名';
                         activeRouteSection = f.properties.section || '';
                         input.value = activeRouteName;
-                        input.blur(); 
-                        syncDisplay(); 
+                        
+                        setTimeout(() => { input.blur(); syncDisplay(); }, 0);
                         
                         clearBtn.style.display = 'block';
                         geojsonLayer.eachLayer(layer => {
@@ -247,14 +256,16 @@
                     const sectionName = f.properties.section || '';
                     item.innerHTML = sectionName ? `${lineName}<span style="font-size:12px; color:#999; margin-left:10px;">${sectionName}</span>` : lineName;
                     
-                    item.onclick = () => {
+                    item.onclick = (e) => {
+                        e.stopPropagation(); // 🎯 關鍵修正：阻止事件冒泡
                         dropdown.style.display = 'none';
-                        searchBox.classList.add('expanded'); // 🎯 強制展開
+                        searchBox.classList.add('expanded');
                         activeRouteName = lineName;
                         activeRouteSection = sectionName;
                         input.value = activeRouteName;
-                        input.blur(); 
-                        syncDisplay(); 
+                        
+                        setTimeout(() => { input.blur(); syncDisplay(); }, 0);
+                        
                         clearBtn.style.display = 'block'; 
                         geojsonLayer.eachLayer(layer => {
                             if (layer.feature === f) {
@@ -291,6 +302,7 @@
             }
         };
 
+        // 🎯 點擊搜尋列本身，強制觸發對焦
         searchBox.onclick = function(e) { input.focus(); };
 
         document.addEventListener('click', function(e) {
