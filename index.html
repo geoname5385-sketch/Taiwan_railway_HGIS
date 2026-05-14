@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>古今鐵道營業線 HGIS 查詢系統 v8.8</title>
+    <title>古今鐵道營業線 HGIS 查詢系統 v8.9</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
@@ -55,7 +55,7 @@
         }
         #custom-search-box.expanded #input-display-layer { opacity: 1; }
 
-        /* ⓧ 按鈕 (胖手指 45px 優化) */
+        /* ⓧ 按鈕 */
         #clearBtn {
             position: absolute; right: 0; top: 0; font-size: 22px; color: #999;
             cursor: pointer; display: none; z-index: 1002; 
@@ -125,14 +125,12 @@
                             layer.bindPopup(content);
 
                             layer.on('click', function(e) {
-                                // 🎯 v8.8 強制展開並離焦
                                 searchBox.classList.add('expanded');
                                 
                                 activeRouteName = feature.properties.name || '未命名';
                                 activeRouteSection = feature.properties.section || '';
                                 
                                 input.value = activeRouteName;
-                                // 使用 setTimeout 確保在點擊事件完全結束後才執行離焦
                                 setTimeout(() => { input.blur(); syncDisplay(); }, 0);
                                 
                                 clearBtn.style.display = 'block';
@@ -158,7 +156,6 @@
         const dropdown = document.getElementById('searchDropdown');
         const clearBtn = document.getElementById('clearBtn'); 
 
-        // 🎯 核心渲染邏輯：依據對焦狀態決定是否顯示區間
         function syncDisplay() {
             const val = input.value;
             if (val === '') {
@@ -169,12 +166,10 @@
             let safeVal = val.replace(/</g, "&lt;").replace(/>/g, "&gt;");
             const isFocused = (document.activeElement === input);
             
-            // 閱覽模式：顯示名稱 + 灰色區間 (不帶括號)
             if (!isFocused && val === activeRouteName && activeRouteSection) {
                 let safeSection = activeRouteSection.replace(/</g, "&lt;").replace(/>/g, "&gt;");
                 displayLayer.innerHTML = `${safeVal} <span style="font-size:12px; color:#999; margin-left:5px;">${safeSection}</span>`;
             } else {
-                // 編輯模式：只顯示乾淨的標題
                 displayLayer.innerHTML = safeVal;
             }
         }
@@ -201,9 +196,11 @@
             const normalize = str => str ? str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') : '';
             const cleanKeyword = normalize(keyword);
 
+            // 🎯 v8.9 核心修正：還原搜尋邏輯，不再搜尋 section
             let matched = (keyword === '') ? [...allFeatures] : allFeatures.filter(f => {
-                const combinedSearch = normalize(`${f.properties.name || ''} ${f.properties.section || ''}`);
-                return combinedSearch.includes(cleanKeyword) || normalize(f.properties.tailo || "").includes(cleanKeyword);
+                const nameMatch = normalize(f.properties.name || "").includes(cleanKeyword);
+                const tailoMatch = normalize(f.properties.tailo || "").includes(cleanKeyword);
+                return nameMatch || tailoMatch;
             });
 
             matched.sort((a, b) => (a.properties.tailo || "").localeCompare(b.properties.tailo || "", 'en'));
@@ -216,7 +213,7 @@
                     randomItem.innerHTML = '🎲 隨機探索一條路線';
                     
                     randomItem.onclick = (e) => {
-                        e.stopPropagation(); // 🎯 關鍵修正：阻止事件冒泡到 searchBox
+                        e.stopPropagation(); 
                         dropdown.style.display = 'none';
                         searchBox.classList.add('expanded');
                         
@@ -257,7 +254,7 @@
                     item.innerHTML = sectionName ? `${lineName}<span style="font-size:12px; color:#999; margin-left:10px;">${sectionName}</span>` : lineName;
                     
                     item.onclick = (e) => {
-                        e.stopPropagation(); // 🎯 關鍵修正：阻止事件冒泡
+                        e.stopPropagation(); 
                         dropdown.style.display = 'none';
                         searchBox.classList.add('expanded');
                         activeRouteName = lineName;
@@ -302,7 +299,6 @@
             }
         };
 
-        // 🎯 點擊搜尋列本身，強制觸發對焦
         searchBox.onclick = function(e) { input.focus(); };
 
         document.addEventListener('click', function(e) {
