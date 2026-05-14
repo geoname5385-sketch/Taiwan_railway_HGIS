@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>古今鐵道營業線 HGIS 查詢系統 v7.7</title>
+    <title>古今鐵道營業線 HGIS 查詢系統 v7.8</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
@@ -24,40 +24,35 @@
             box-shadow: 0 4px 10px rgba(0,0,0,0.3); pointer-events: none;
         }
 
-        /* 🎯 v7.7：搜尋列位置移至左上角 (left: 15px) */
+        /* 經典伸縮搜尋列 (已移除時空拉桿邏輯，回歸純粹) */
         #custom-search-box {
             position: absolute; top: 15px; left: 15px; z-index: 1000;
             background-color: white;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23666"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>');
+            background-repeat: no-repeat; background-position: 12.5px center; background-size: 20px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.3);
             width: 45px; height: 45px; border-radius: 25px;
             overflow: visible; transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
-            display: flex; align-items: center;
-        }
-
-        #custom-search-box.expanded { width: 320px; border-radius: 8px; }
-
-        /* 🔍 放大鏡按鈕 (切換時空拉桿) */
-        #searchIcon {
-            width: 45px; height: 45px; flex-shrink: 0;
-            display: flex; align-items: center; justify-content: center;
             cursor: pointer;
-            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%231a237e"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>');
-            background-repeat: no-repeat; background-position: center; background-size: 24px;
         }
 
-        #custom-search-box input {
-            flex-grow: 1; height: 45px; border: none; outline: none; background: transparent;
-            padding-right: 45px; font-size: 16px; box-sizing: border-box;
-            opacity: 0; pointer-events: none; transition: opacity 0.3s;
-        }
+        #custom-search-box.expanded { width: 320px; border-radius: 8px; cursor: text; }
+        #custom-search-box:not(.expanded) input { opacity: 0; pointer-events: none; }
         #custom-search-box.expanded input { opacity: 1; pointer-events: auto; }
 
-        /* ⓧ 按鈕 (胖手指優化 45px) */
+        #custom-search-box input {
+            width: 100%; height: 45px; border: none; outline: none; background: transparent;
+            padding-left: 40px; padding-right: 45px; font-size: 16px; box-sizing: border-box;
+        }
+
+        /* ⓧ 按鈕 (保留胖手指 45px 優化) */
         #clearBtn {
             position: absolute; right: 0; top: 0; font-size: 22px; color: #999;
             cursor: pointer; display: none; z-index: 1002; 
             width: 45px; height: 45px; line-height: 45px; text-align: center;
         }
+        #clearBtn:hover { color: #333; }
+        #custom-search-box:not(.expanded) #clearBtn { display: none !important; }
 
         /* 搜尋選單 */
         #searchDropdown {
@@ -65,25 +60,27 @@
             box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-radius: 5px; display: none;
             max-height: 50dvh; overflow-y: auto; z-index: 1001;
         }
-
-        /* ⏳ 時空拉桿面板 (v7.7 位置同步優化) */
-        #time-machine-panel {
-            position: absolute; top: 70px; left: 15px; z-index: 999;
-            background: white; padding: 12px 18px; border-radius: 8px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-            display: none; width: 284px; box-sizing: border-box;
-        }
-        #year-slider { width: 100%; margin: 10px 0; cursor: pointer; }
-        .time-label { display: flex; justify-content: space-between; font-size: 12px; color: #666; font-weight: bold; }
-        #current-year-display { color: #1a237e; font-size: 18px; text-align: center; display: block; font-weight: bold; }
-
         .search-item { padding: 12px 15px; cursor: pointer; border-bottom: 1px solid #eee; font-size: 15px; color: #333; }
+        .search-item:hover { background-color: #f0f4ff; color: #1a237e; }
+
         .random-item { background-color: #e8eaf6; color: #1a237e; font-weight: bold; text-align: center; border-bottom: 2px solid #c5cae9; }
+        .random-item:hover { background-color: #c5cae9; }
+
         .search-letter-header { padding: 4px 15px; background-color: #e0e0e0; color: #555; font-weight: bold; font-size: 13px; position: sticky; top: 0; z-index: 10; }
 
+        /* 圖層面板美化 */
+        .leaflet-control-layers {
+            font-family: '微軟正黑體', 'PingFang TC', Arial, sans-serif;
+            border-radius: 8px !important; box-shadow: 0 4px 10px rgba(0,0,0,0.2) !important; padding: 5px;
+        }
+
+        /* 手機版適配 */
         @media (max-width: 768px) {
             #custom-search-box.expanded { width: calc(100% - 30px) !important; left: 15px !important; }
-            #time-machine-panel { width: calc(100% - 30px) !important; left: 15px !important; }
+            #system-title {
+                top: auto !important; bottom: 40px !important; left: 50% !important; right: auto !important;
+                transform: translateX(-50%); font-size: 14px !important; padding: 8px 15px; white-space: nowrap;
+            }
             .leaflet-control-zoom { display: none !important; } /* 手機隱藏縮放 */
         }
     </style>
@@ -93,20 +90,9 @@
     <div id="system-title">古今鐵道營業線 HGIS 查詢</div>
 
     <div id="custom-search-box">
-        <div id="searchIcon" title="切換時空拉桿"></div>
         <input type="text" id="searchInput" placeholder="搜尋路線名稱..." autocomplete="off">
         <span id="clearBtn" title="清除">&times;</span>
         <div id="searchDropdown"></div>
-    </div>
-
-    <div id="time-machine-panel">
-        <span id="current-year-display">顯示全部年份</span>
-        <input type="range" id="year-slider" min="1890" max="1980" value="1980">
-        <div class="time-label">
-            <span>1890</span>
-            <span>時空拉桿</span>
-            <span>1980</span>
-        </div>
     </div>
 
     <div id="map"></div>
@@ -117,15 +103,16 @@
         // 1. 初始化地圖
         const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' });
         const sinica1904 = L.tileLayer('https://gis.sinica.edu.tw/tileserver/file-exists.php?img=JM20K_1904-jpg-{z}-{x}-{y}', { maxZoom: 18, opacity: 0.85 });
+
         const myRenderer = L.canvas({ tolerance: 15 }); 
 
         const map = L.map('map', { 
             renderer: myRenderer,
             layers: [osm],
-            zoomControl: false 
+            zoomControl: false // 關閉預設左上角
         }).setView([23.6978, 120.9605], 7);
 
-        // 縮放按鈕放在左下角
+        // 將縮放按鈕放在左下角
         L.control.zoom({ position: 'bottomleft' }).addTo(map);
 
         L.control.layers(
@@ -143,150 +130,168 @@
             .then(rawData => {
                 const geoData = rawData.data || rawData; 
                 allFeatures = geoData.features;
-                updateMap(1980, true); 
+
+                geojsonLayer = L.geoJSON(geoData, {
+                    style: { color: "#ff7800", weight: 4, opacity: 0.8 },
+                    onEachFeature: function (feature, layer) {
+                        if (feature.properties) {
+                            let content = `<b>${feature.properties.name || '未命名'}</b>`;
+                            if (feature.properties.open_time) content += `<br>通車: ${feature.properties.open_time}`;
+                            layer.bindPopup(content);
+
+                            layer.on('click', function() {
+                                const input = document.getElementById('searchInput');
+                                const clearBtn = document.getElementById('clearBtn');
+                                
+                                if(input) input.value = feature.properties.name;
+                                if(clearBtn) clearBtn.style.display = 'block';
+
+                                geojsonLayer.eachLayer(l => {
+                                    if (l === layer) {
+                                        l.setStyle({ color: "red", weight: 8, opacity: 1 });
+                                        if (l.bringToFront) l.bringToFront(); 
+                                    } else {
+                                        l.setStyle({ color: "#ff7800", opacity: 0.8, weight: 4 });
+                                    }
+                                });
+                            });
+                        }
+                    }
+                }).addTo(map);
+
+                if (geojsonLayer.getBounds().isValid()) {
+                    map.fitBounds(geojsonLayer.getBounds());
+                }
             })
             .catch(err => alert('資料載入失敗，請確認 data.json 格式。'));
 
-        function updateMap(targetYear, showAll = false) {
-            if (geojsonLayer) map.removeLayer(geojsonLayer);
-            geojsonLayer = L.geoJSON(allFeatures, {
-                filter: (f) => {
-                    if (showAll) return true;
-                    if (!f.properties.open_time) return false;
-                    const match = f.properties.open_time.match(/\d{4}/);
-                    return match ? parseInt(match[0]) <= targetYear : false;
-                },
-                style: { color: "#ff7800", weight: 4, opacity: 0.8 },
-                onEachFeature: (feature, layer) => {
-                    let content = `<b>${feature.properties.name || '未命名'}</b>`;
-                    if (feature.properties.open_time) content += `<br>通車: ${feature.properties.open_time}`;
-                    layer.bindPopup(content);
-                    layer.on('click', () => {
-                        input.value = feature.properties.name;
-                        clearBtn.style.display = 'block';
-                        geojsonLayer.eachLayer(l => {
-                            if (l === layer) { l.setStyle({ color: "red", weight: 8, opacity: 1 }); if (l.bringToFront) l.bringToFront(); }
-                            else { l.setStyle({ color: "#ff7800", opacity: 0.8, weight: 4 }); }
-                        });
-                    });
-                }
-            }).addTo(map);
-        }
-
-        // 3. UI 邏輯
+        // 3. 搜尋功能邏輯
         const searchBox = document.getElementById('custom-search-box');
         const input = document.getElementById('searchInput');
         const dropdown = document.getElementById('searchDropdown');
-        const clearBtn = document.getElementById('clearBtn');
-        const searchIcon = document.getElementById('searchIcon');
-        const timePanel = document.getElementById('time-machine-panel');
-        const yearSlider = document.getElementById('year-slider');
-        const yearDisplay = document.getElementById('current-year-display');
-
-        // 🔍 點擊放大鏡：單純切換時空拉桿
-        searchIcon.onclick = function(e) {
-            e.stopPropagation();
-            const isVisible = (timePanel.style.display === 'block');
-            timePanel.style.display = isVisible ? 'none' : 'block';
-            
-            // 如果開啟了拉桿，縮回搜尋列
-            if (!isVisible) {
-                searchBox.classList.remove('expanded');
-                dropdown.style.display = 'none';
-            }
-        };
-
-        // ⏳ 滑動拉桿
-        yearSlider.oninput = function() {
-            const year = parseInt(this.value);
-            yearDisplay.textContent = `顯示 ${year} 年以前`;
-            updateMap(year, false);
-        };
-
-        // 點擊搜尋框
-        searchBox.onclick = function(e) {
-            if (e.target === searchIcon) return; // 點放大鏡不觸發搜尋展開
-            
-            if (!this.classList.contains('expanded')) {
-                this.classList.add('expanded');
-                timePanel.style.display = 'none'; // 展開搜尋時自動關閉拉桿卡片
-                clearBtn.style.display = 'block';
-                renderList('');
-                if (window.innerWidth > 768) input.focus();
-            }
-        };
+        const clearBtn = document.getElementById('clearBtn'); 
 
         function renderList(val) {
             const keyword = val.trim().toLowerCase();
             dropdown.innerHTML = '';
             clearBtn.style.display = 'block';
+
             const normalize = str => str ? str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') : '';
             const cleanKeyword = normalize(keyword);
-            
-            let matched = (keyword === '') ? [...allFeatures] : allFeatures.filter(f => {
-                return normalize(f.properties.name).includes(cleanKeyword) || normalize(f.properties.tailo || "").includes(cleanKeyword);
+
+            let matched = (keyword === '') 
+                ? [...allFeatures] 
+                : allFeatures.filter(f => {
+                    if (!f.properties) return false;
+                    const nameMatch = normalize(f.properties.name).includes(cleanKeyword);
+                    const tailoMatch = normalize(f.properties.tailo || "").includes(cleanKeyword);
+                    return nameMatch || tailoMatch;
+                });
+
+            matched.sort((a, b) => {
+                const tA = a.properties.tailo || "";
+                const tB = b.properties.tailo || "";
+                return tA.localeCompare(tB, 'en');
             });
-            matched.sort((a, b) => (a.properties.tailo || "").localeCompare(b.properties.tailo || "", 'en'));
+
+            if (keyword === '') {
+                if(geojsonLayer) geojsonLayer.setStyle({ color: "#ff7800", weight: 4, opacity: 0.8 });
+            }
 
             if (matched.length > 0) {
                 dropdown.style.display = 'block';
-                if (keyword === '') {
+
+                if (keyword === '' && allFeatures.length > 0) {
                     const randomItem = document.createElement('div');
                     randomItem.className = 'search-item random-item';
                     randomItem.innerHTML = '🎲 隨機探索一條路線';
+                    
                     randomItem.onclick = (e) => {
                         e.stopPropagation();
                         dropdown.style.display = 'none';
-                        const f = allFeatures[Math.floor(Math.random() * allFeatures.length)];
-                        input.value = f.properties.name;
+                        input.blur();
+
+                        const randomIndex = Math.floor(Math.random() * allFeatures.length);
+                        const randomFeature = allFeatures[randomIndex];
+                        const lineName = randomFeature.properties.name || '未命名';
+                        
+                        input.value = lineName;
+                        clearBtn.style.display = 'block';
+
                         geojsonLayer.eachLayer(layer => {
-                            if (layer.feature === f) {
+                            if (layer.feature === randomFeature) {
                                 layer.setStyle({ color: "red", weight: 8, opacity: 1 });
-                                if (layer.getBounds) map.flyToBounds(layer.getBounds(), { padding: [50, 50], duration: 1.5 });
+                                if (layer.bringToFront) layer.bringToFront();
+                                if (layer.getBounds) {
+                                    map.flyToBounds(layer.getBounds(), { padding: [50, 50], duration: 1.5 });
+                                }
                                 layer.openPopup();
-                            } else { layer.setStyle({ color: "#ff7800", opacity: 0.8, weight: 4 }); }
+                            } else {
+                                layer.setStyle({ color: "#ff7800", opacity: 0.8, weight: 4 });
+                            }
                         });
                     };
                     dropdown.appendChild(randomItem);
                 }
                 
-                let currentLetter = '';
+                let currentLetter = ''; 
+
                 matched.forEach(f => {
-                    const firstChar = (f.properties.tailo || "#").charAt(0).toUpperCase();
+                    const tailoStr = f.properties.tailo || "";
+                    const firstChar = tailoStr.charAt(0).toUpperCase() || "#";
+
                     if (firstChar !== currentLetter) {
                         currentLetter = firstChar;
-                        const header = document.createElement('div');
-                        header.className = 'search-letter-header';
-                        header.textContent = currentLetter;
-                        dropdown.appendChild(header);
+                        const headerItem = document.createElement('div');
+                        headerItem.className = 'search-letter-header';
+                        headerItem.textContent = currentLetter;
+                        dropdown.appendChild(headerItem);
                     }
+
                     const item = document.createElement('div');
                     item.className = 'search-item';
-                    const section = f.properties.section ? `<span style="font-size: 12px; color: #999; margin-left: 10px;">${f.properties.section}</span>` : '';
-                    item.innerHTML = `${f.properties.name || '未命名'}${section}`;
+                    
+                    const lineName = f.properties.name || '未命名';
+                    const sectionName = f.properties.section || '';
+                    if (sectionName) {
+                        item.innerHTML = `${lineName}<span style="font-size: 12px; color: #999; margin-left: 10px;">${sectionName}</span>`;
+                    } else {
+                        item.textContent = lineName;
+                    }
+                    
                     item.onclick = () => {
                         dropdown.style.display = 'none';
-                        input.value = f.properties.name;
+                        input.value = lineName;
+                        clearBtn.style.display = 'block'; 
+                        
                         geojsonLayer.eachLayer(layer => {
                             if (layer.feature === f) {
-                                layer.setStyle({ color: "red", weight: 8, opacity: 1 });
+                                layer.setStyle({ color: "red", weight: 8, opacity: 1 }); 
+                                if (layer.bringToFront) layer.bringToFront();
                                 if (layer.getBounds) map.fitBounds(layer.getBounds(), { padding: [50, 50] });
                                 layer.openPopup();
-                            } else { layer.setStyle({ color: "#ff7800", opacity: 0.8, weight: 4 }); }
+                            } else {
+                                layer.setStyle({ color: "#ff7800", opacity: 0.8, weight: 4 });
+                            }
                         });
                     };
                     dropdown.appendChild(item);
                 });
+            } else {
+                dropdown.style.display = 'none';
             }
         }
 
+        // ⓧ 按鈕兩段式邏輯
         clearBtn.onclick = function(e) {
             e.stopPropagation();
             if (input.value.length > 0) {
                 input.value = '';
                 renderList('');
                 if(geojsonLayer) geojsonLayer.setStyle({ color: "#ff7800", weight: 4, opacity: 0.8 }); 
-                if (window.innerWidth > 768) input.focus();
+                if (window.innerWidth > 768) {
+                    input.focus();
+                }
             } else {
                 searchBox.classList.remove('expanded');
                 dropdown.style.display = 'none';
@@ -294,18 +299,33 @@
             }
         };
 
+        searchBox.onclick = function(e) {
+            if (!this.classList.contains('expanded')) {
+                this.classList.add('expanded');
+                clearBtn.style.display = 'block'; 
+                renderList(''); 
+                if (window.innerWidth > 768) {
+                    input.focus();
+                }
+            }
+        };
+
         input.onfocus = input.onclick = input.oninput = function() { renderList(this.value); };
-        
-        document.addEventListener('click', (e) => {
-            if (!searchBox.contains(e.target) && !timePanel.contains(e.target)) {
-                dropdown.style.display = 'none';
-                timePanel.style.display = 'none';
-                if (input.value.trim() === '') searchBox.classList.remove('expanded');
+
+        document.addEventListener('click', function(e) {
+            if (!searchBox.contains(e.target)) {
+                if (input.value.trim() === '') {
+                    searchBox.classList.remove('expanded');
+                    dropdown.style.display = 'none';
+                } else {
+                    dropdown.style.display = 'none';
+                }
             }
         });
-        
-        map.on('click', () => { dropdown.style.display = 'none'; timePanel.style.display = 'none'; });
-        dropdown.addEventListener('scroll', () => input.blur(), { passive: true });
+
+        map.on('click', () => dropdown.style.display = 'none');
+        dropdown.addEventListener('scroll', function() { input.blur(); }, { passive: true });
+
     </script>
 </body>
 </html>
