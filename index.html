@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>古今鐵道營業線 HGIS 查詢系統 v8.13</title>
+    <title>古今鐵道營業線 HGIS 查詢系統 v8.14</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
@@ -36,7 +36,6 @@
 
         #custom-search-box.expanded { width: 320px; border-radius: 8px; cursor: text; }
 
-        /* 隱形真實輸入框 */
         #custom-search-box input {
             width: 100%; height: 45px; border: none; outline: none; background: transparent;
             padding-left: 40px; padding-right: 45px; font-size: 16px; box-sizing: border-box;
@@ -46,7 +45,6 @@
         #custom-search-box.expanded input { opacity: 1; pointer-events: auto; }
         #custom-search-box input::placeholder { color: transparent; }
 
-        /* 🎯 保留 v8.12 特色：跨裝置的輸入框觸控分離 */
         @media (max-width: 768px) {
             #custom-search-box:not(.expanded) input { pointer-events: none; }
         }
@@ -54,7 +52,6 @@
             #custom-search-box:not(.expanded) input { pointer-events: auto; cursor: pointer; }
         }
 
-        /* 顯影疊加層 */
         #input-display-layer {
             position: absolute; left: 40px; top: 0; height: 45px; line-height: 45px;
             width: calc(100% - 85px); font-size: 16px; color: #333;
@@ -63,7 +60,6 @@
         }
         #custom-search-box.expanded #input-display-layer { opacity: 1; }
 
-        /* ⓧ 按鈕 */
         #clearBtn {
             position: absolute; right: 0; top: 0; font-size: 22px; color: #999;
             cursor: pointer; display: none; z-index: 1002; 
@@ -115,6 +111,9 @@
         let allFeatures = [];
         let activeRouteName = '';
         let activeRouteSection = '';
+        
+        // 🎯 v8.14 新增：幽靈滾動的防護鎖
+        let isRenderingList = false;
 
         fetch('data.json')
             .then(response => response.json())
@@ -132,13 +131,10 @@
 
                             layer.on('click', function(e) {
                                 searchBox.classList.add('expanded');
-                                
                                 activeRouteName = feature.properties.name || '未命名';
                                 activeRouteSection = feature.properties.section || '';
-                                
                                 input.value = activeRouteName;
                                 setTimeout(() => { input.blur(); syncDisplay(); }, 0);
-                                
                                 clearBtn.style.display = 'block';
 
                                 geojsonLayer.eachLayer(l => {
@@ -180,23 +176,19 @@
             }
         }
 
-        // 🎯 v8.13 核心：加入「交通管制」，分離 UI 渲染與鍵盤彈出
         input.addEventListener('focus', function() {
             if (!searchBox.classList.contains('expanded')) {
                 searchBox.classList.add('expanded');
                 clearBtn.style.display = 'block';
             }
-            
-            // 1. 瞬間消除區間小字，給予即時視覺回饋
             syncDisplay(); 
             
-            // 2. 發放號碼牌：延遲 100 毫秒再去畫清單，讓系統有空檔把鍵盤推上來
+            // 給予 100ms 讓鍵盤安心彈出，再執行會產生 DOM 變動的 renderList
             setTimeout(() => {
                 renderList(input.value);
             }, 100);
         });
 
-        // 點擊圓球展開時 (沒有鍵盤干擾，可直接渲染)
         searchBox.addEventListener('click', function(e) {
             if (!this.classList.contains('expanded')) {
                 this.classList.add('expanded');
@@ -211,7 +203,10 @@
         });
 
         function renderList(val) {
+            // 🎯 v8.14 核心：鎖上號誌，宣告「我正在動工，滾動事件請忽略我」
+            isRenderingList = true;
             syncDisplay(); 
+            
             const keyword = val.trim().toLowerCase();
             dropdown.innerHTML = '';
             clearBtn.style.display = 'block';
@@ -219,7 +214,6 @@
             const normalize = str => str ? str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') : '';
             const cleanKeyword = normalize(keyword);
 
-            // 保留 v8.9 的精確打擊：只搜名稱和拼音
             let matched = (keyword === '') ? [...allFeatures] : allFeatures.filter(f => {
                 const nameMatch = normalize(f.properties.name || "").includes(cleanKeyword);
                 const tailoMatch = normalize(f.properties.tailo || "").includes(cleanKeyword);
@@ -298,9 +292,11 @@
                     dropdown.appendChild(item);
                 });
             } else { dropdown.style.display = 'none'; }
+            
+            // 🎯 畫完清單後，給予 50 毫秒緩衝，等待瀏覽器消耗掉幽靈滾動事件，然後再解鎖
+            setTimeout(() => { isRenderingList = false; }, 50);
         }
 
-        // 當正在打字時，鍵盤已經彈出，所以不需延遲，直接同步渲染
         input.oninput = function() { 
             if (this.value !== activeRouteName) { activeRouteName = ''; activeRouteSection = ''; }
             syncDisplay();
@@ -331,7 +327,13 @@
         });
         
         map.on('click', () => dropdown.style.display = 'none');
-        dropdown.addEventListener('scroll', function() { input.blur(); }, { passive: true });
+        
+        // 🎯 只有在非重繪期間的「真正人為滾動」，才允許收起鍵盤 (失焦)
+        dropdown.addEventListener('scroll', function() { 
+            if (!isRenderingList) {
+                input.blur(); 
+            }
+        }, { passive: true });
     </script>
 </body>
 </html>
