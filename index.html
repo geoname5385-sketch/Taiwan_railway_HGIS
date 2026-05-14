@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>古今鐵道營業線 HGIS 查詢系統 v8.11</title>
+    <title>古今鐵道營業線 HGIS 查詢系統 v8.12</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
@@ -41,10 +41,20 @@
             width: 100%; height: 45px; border: none; outline: none; background: transparent;
             padding-left: 40px; padding-right: 45px; font-size: 16px; box-sizing: border-box;
             color: transparent; caret-color: #333; position: relative; z-index: 2;
-            opacity: 0; cursor: pointer; -webkit-appearance: none; appearance: none; margin: 0; font-family: inherit;
+            opacity: 0; -webkit-appearance: none; appearance: none; margin: 0; font-family: inherit;
         }
-        #custom-search-box.expanded input { opacity: 1; cursor: text; }
+        #custom-search-box.expanded input { opacity: 1; pointer-events: auto; }
         #custom-search-box input::placeholder { color: transparent; }
+
+        /* 🎯 v8.12 核心：跨裝置的輸入框觸控分離 */
+        @media (max-width: 768px) {
+            /* 手機版：縮合時鎖死輸入框，防鍵盤彈出 */
+            #custom-search-box:not(.expanded) input { pointer-events: none; }
+        }
+        @media (min-width: 769px) {
+            /* 桌機版：隨時可點擊，保證原生對焦 */
+            #custom-search-box:not(.expanded) input { pointer-events: auto; cursor: pointer; }
+        }
 
         /* 顯影疊加層 */
         #input-display-layer {
@@ -172,23 +182,29 @@
             }
         }
 
-        // 🎯 v8.11：絕對同步連動！只要對焦，就立刻展開與渲染
+        // 當輸入框原生獲得焦點時（桌機點擊，或手機展開後點擊文字框）
         input.addEventListener('focus', function() {
-            searchBox.classList.add('expanded');
-            clearBtn.style.display = 'block';
-            syncDisplay(); 
-            renderList(this.value); // 零延遲，直接出清單！
+            if (!searchBox.classList.contains('expanded')) {
+                searchBox.classList.add('expanded');
+                clearBtn.style.display = 'block';
+            }
+            syncDisplay();
+            renderList(this.value);
+        });
+
+        // 🎯 v8.12 核心：專門處理手機版「點擊圓球只展開、出清單、防鍵盤」的邏輯
+        searchBox.addEventListener('click', function(e) {
+            if (!this.classList.contains('expanded')) {
+                this.classList.add('expanded');
+                clearBtn.style.display = 'block';
+                syncDisplay();
+                renderList(input.value);
+                // 這裡絕對不調用 input.focus()，所以手機鍵盤絕對不會彈出來！
+            }
         });
 
         input.addEventListener('blur', function() {
             syncDisplay(); 
-        });
-
-        // 🎯 v8.11：點擊圓球容器的任何地方，強制將瀏覽器焦點轉移給文字框
-        searchBox.addEventListener('click', function(e) {
-            if (document.activeElement !== input) {
-                input.focus(); 
-            }
         });
 
         function renderList(val) {
@@ -294,7 +310,9 @@
                 syncDisplay(); 
                 renderList('');
                 if(geojsonLayer) geojsonLayer.setStyle({ color: "#ff7800", weight: 4, opacity: 0.8 }); 
-                input.focus(); 
+                
+                // 桌機版清除後保持對焦
+                if (window.innerWidth > 768) input.focus(); 
             } else {
                 searchBox.classList.remove('expanded');
                 dropdown.style.display = 'none';
