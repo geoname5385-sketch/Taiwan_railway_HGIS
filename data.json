@@ -16,7 +16,7 @@
           "period": "日治/戰後",
           "comment": "Imported from SHP (ID: 1)",
           "tailo": "Liông-tiân-suànn",
-          "section": ""
+          "section": "隆田＝二重港"
         },
         "geometry": {
           "type": "LineString",
@@ -834,7 +834,7 @@
           "extrude": 0,
           "visibility": -1,
           "tailo": "Ha̍k-kah-suànn",
-          "section": ""
+          "section": "新營＝學甲"
         },
         "geometry": {
           "type": "LineString",
@@ -1284,7 +1284,7 @@
           "extrude": 0,
           "visibility": -1,
           "tailo": "Káng-lîm-suànn",
-          "section": ""
+          "section": "小港＝林園"
         },
         "geometry": {
           "type": "LineString",
@@ -2398,7 +2398,7 @@
           "extrude": 0,
           "visibility": -1,
           "tailo": "Kî-bué-suànn",
-          "section": ""
+          "section": "九曲堂＝竹頭角"
         },
         "geometry": {
           "type": "LineString",
@@ -3900,7 +3900,7 @@
           "extrude": 0,
           "visibility": -1,
           "tailo": "Lîng-nâ-suànn",
-          "section": ""
+          "section": "虎尾＝臺西"
         },
         "geometry": {
           "type": "LineString",
@@ -4598,7 +4598,7 @@
           "extrude": 0,
           "visibility": -1,
           "tailo": "Kháu-ôo-suànn",
-          "section": ""
+          "section": "北港＝口湖"
         },
         "geometry": {
           "type": "LineString",
@@ -5830,7 +5830,7 @@
           "extrude": 0,
           "visibility": -1,
           "tailo": "Sai-lê-suànn",
-          "section": ""
+          "section": "虎尾＝西螺"
         },
         "geometry": {
           "type": "LineString",
@@ -6436,7 +6436,7 @@
           "extrude": 0,
           "visibility": -1,
           "tailo": "Sann-tiâu-lūn-suànn",
-          "section": ""
+          "section": "北港＝新厝"
         },
         "geometry": {
           "type": "LineString",
@@ -7822,7 +7822,7 @@
           "extrude": 0,
           "visibility": -1,
           "tailo": "Phoh-tsú-suànn",
-          "section": ""
+          "section": "嘉義＝港墘"
         },
         "geometry": {
           "type": "LineString",
@@ -8320,7 +8320,7 @@
           "extrude": 0,
           "visibility": -1,
           "tailo": "Sió-buê-suànn",
-          "section": ""
+          "section": "大林＝小梅"
         },
         "geometry": {
           "type": "LineString",
@@ -8850,7 +8850,7 @@
           "extrude": 0,
           "visibility": -1,
           "tailo": "Lâm-tsīng-suànn",
-          "section": ""
+          "section": "南靖＝蒜頭"
         },
         "geometry": {
           "type": "LineString",
@@ -9690,7 +9690,7 @@
           "extrude": 0,
           "visibility": -1,
           "tailo": "Kuan-biō-suànn",
-          "section": ""
+          "section": "臺南＝關廟"
         },
         "geometry": {
           "type": "MultiLineString",
@@ -11274,7 +11274,7 @@
           "extrude": 0,
           "visibility": -1,
           "tailo": "Lí-káng-suànn",
-          "section": ""
+          "section": "屏東＝里港"
         },
         "geometry": {
           "type": "MultiLineString",
@@ -12468,7 +12468,7 @@
           "extrude": 0,
           "visibility": -1,
           "tailo": "Tang-káng-suànn",
-          "section": ""
+          "section": "屏東＝新園"
         },
         "geometry": {
           "type": "LineString",
