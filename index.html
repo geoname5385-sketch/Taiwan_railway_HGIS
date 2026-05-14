@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>古今鐵道營業線 HGIS 查詢系統 v8.6</title>
+    <title>古今鐵道營業線 HGIS 查詢系統 v8.7</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
@@ -36,34 +36,20 @@
 
         #custom-search-box.expanded { width: 320px; border-radius: 8px; cursor: text; }
 
-        /* 🎯 v8.6 核心修改：移除 pointer-events，利用原生點擊確保對焦 */
         #custom-search-box input {
             width: 100%; height: 45px; border: none; outline: none; background: transparent;
             padding-left: 40px; padding-right: 45px; font-size: 16px; box-sizing: border-box;
-            color: transparent; 
-            caret-color: #333;  
-            position: relative; z-index: 2;
-            opacity: 0; 
-            cursor: pointer; /* 收合時顯示為點擊游標 */
-            -webkit-appearance: none; appearance: none; margin: 0; 
-            font-family: inherit;
+            color: transparent; caret-color: #333; position: relative; z-index: 2;
+            opacity: 0; cursor: pointer; -webkit-appearance: none; appearance: none; margin: 0; font-family: inherit;
         }
-        #custom-search-box.expanded input { 
-            opacity: 1; 
-            cursor: text; /* 展開後恢復文字輸入游標 */
-        }
+        #custom-search-box.expanded input { opacity: 1; cursor: text; }
         #custom-search-box input::placeholder { color: transparent; }
-        #custom-search-box input::-webkit-input-placeholder { color: transparent; }
 
-        /* 顯影疊加層 */
         #input-display-layer {
             position: absolute; left: 40px; top: 0; height: 45px; line-height: 45px;
             width: calc(100% - 85px); font-size: 16px; color: #333;
-            pointer-events: none; 
-            white-space: pre; 
-            overflow: hidden;
-            z-index: 1; opacity: 0;
-            font-family: inherit;
+            pointer-events: none; white-space: pre; overflow: hidden;
+            z-index: 1; opacity: 0; font-family: inherit;
         }
         #custom-search-box.expanded #input-display-layer { opacity: 1; }
 
@@ -80,7 +66,6 @@
         }
         .search-item { padding: 12px 15px; cursor: pointer; border-bottom: 1px solid #eee; font-size: 15px; color: #333; }
         .search-item:hover { background-color: #f0f4ff; color: #1a237e; }
-
         .random-item { background-color: #e8eaf6; color: #1a237e; font-weight: bold; text-align: center; border-bottom: 2px solid #c5cae9; }
         .search-letter-header { padding: 4px 15px; background-color: #e0e0e0; color: #555; font-weight: bold; font-size: 13px; position: sticky; top: 0; z-index: 10; }
 
@@ -135,8 +120,8 @@
                             layer.bindPopup(content);
 
                             layer.on('click', function() {
-                                const input = document.getElementById('searchInput');
-                                const clearBtn = document.getElementById('clearBtn');
+                                // 🎯 v8.7 強制展開並更新
+                                searchBox.classList.add('expanded');
                                 
                                 activeRouteName = feature.properties.name || '未命名';
                                 activeRouteSection = feature.properties.section || '';
@@ -177,15 +162,15 @@
             let safeVal = val.replace(/</g, "&lt;").replace(/>/g, "&gt;");
             const isFocused = (document.activeElement === input);
             
+            // 🎯 v8.7 視覺微調：去除括號，改用空格
             if (!isFocused && val === activeRouteName && activeRouteSection) {
                 let safeSection = activeRouteSection.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-                displayLayer.innerHTML = `${safeVal} <span style="font-size:12px; color:#999; margin-left:5px;">[${safeSection}]</span>`;
+                displayLayer.innerHTML = `${safeVal} <span style="font-size:12px; color:#999; margin-left:5px;">${safeSection}</span>`;
             } else {
                 displayLayer.innerHTML = safeVal;
             }
         }
 
-        // 🎯 v8.6 核心：將「展開」邏輯綁定到原生的 focus 事件
         input.addEventListener('focus', function() {
             if (!searchBox.classList.contains('expanded')) {
                 searchBox.classList.add('expanded');
@@ -209,11 +194,8 @@
             const cleanKeyword = normalize(keyword);
 
             let matched = (keyword === '') ? [...allFeatures] : allFeatures.filter(f => {
-                const combinedNameBracket = normalize(`${f.properties.name || ''} [${f.properties.section || ''}]`);
-                const combinedNameSpace = normalize(`${f.properties.name || ''} ${f.properties.section || ''}`);
-                const isNameMatch = combinedNameBracket.includes(cleanKeyword) || combinedNameSpace.includes(cleanKeyword) || normalize(f.properties.name).includes(cleanKeyword);
-                const tailoMatch = normalize(f.properties.tailo || "").includes(cleanKeyword);
-                return isNameMatch || tailoMatch;
+                const combinedSearch = normalize(`${f.properties.name || ''} ${f.properties.section || ''}`);
+                return combinedSearch.includes(cleanKeyword) || normalize(f.properties.tailo || "").includes(cleanKeyword);
             });
 
             matched.sort((a, b) => (a.properties.tailo || "").localeCompare(b.properties.tailo || "", 'en'));
@@ -227,17 +209,18 @@
                     randomItem.onclick = (e) => {
                         e.stopPropagation();
                         dropdown.style.display = 'none';
+                        searchBox.classList.add('expanded'); // 🎯 強制展開
                         
-                        const randomFeature = allFeatures[Math.floor(Math.random() * allFeatures.length)];
-                        activeRouteName = randomFeature.properties.name || '未命名';
-                        activeRouteSection = randomFeature.properties.section || '';
+                        const f = allFeatures[Math.floor(Math.random() * allFeatures.length)];
+                        activeRouteName = f.properties.name || '未命名';
+                        activeRouteSection = f.properties.section || '';
                         input.value = activeRouteName;
                         input.blur(); 
                         syncDisplay(); 
                         
                         clearBtn.style.display = 'block';
                         geojsonLayer.eachLayer(layer => {
-                            if (layer.feature === randomFeature) {
+                            if (layer.feature === f) {
                                 layer.setStyle({ color: "red", weight: 8, opacity: 1 });
                                 if (layer.bringToFront) layer.bringToFront();
                                 if (layer.getBounds) map.flyToBounds(layer.getBounds(), { padding: [50, 50], duration: 1.5 });
@@ -266,12 +249,12 @@
                     
                     item.onclick = () => {
                         dropdown.style.display = 'none';
+                        searchBox.classList.add('expanded'); // 🎯 強制展開
                         activeRouteName = lineName;
                         activeRouteSection = sectionName;
                         input.value = activeRouteName;
                         input.blur(); 
                         syncDisplay(); 
-                        
                         clearBtn.style.display = 'block'; 
                         geojsonLayer.eachLayer(layer => {
                             if (layer.feature === f) {
@@ -287,10 +270,7 @@
         }
 
         input.oninput = function() { 
-            if (this.value !== activeRouteName) {
-                activeRouteName = '';
-                activeRouteSection = '';
-            }
+            if (this.value !== activeRouteName) { activeRouteName = ''; activeRouteSection = ''; }
             syncDisplay();
             renderList(this.value); 
         };
@@ -299,8 +279,7 @@
             e.stopPropagation();
             if (input.value.length > 0) {
                 input.value = '';
-                activeRouteName = '';
-                activeRouteSection = '';
+                activeRouteName = ''; activeRouteSection = '';
                 syncDisplay(); 
                 renderList('');
                 if(geojsonLayer) geojsonLayer.setStyle({ color: "#ff7800", weight: 4, opacity: 0.8 }); 
@@ -312,10 +291,7 @@
             }
         };
 
-        // 🎯 點擊容器任何地方，直接由瀏覽器或 JS 接管對焦
-        searchBox.onclick = function(e) {
-            input.focus(); 
-        };
+        searchBox.onclick = function(e) { input.focus(); };
 
         document.addEventListener('click', function(e) {
             if (!searchBox.contains(e.target)) {
