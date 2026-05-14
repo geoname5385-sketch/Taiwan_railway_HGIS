@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>古今鐵道營業線 HGIS 查詢系統 v8.12</title>
+    <title>古今鐵道營業線 HGIS 查詢系統 v8.13</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
@@ -36,7 +36,7 @@
 
         #custom-search-box.expanded { width: 320px; border-radius: 8px; cursor: text; }
 
-        /* 隱形輸入框 */
+        /* 隱形真實輸入框 */
         #custom-search-box input {
             width: 100%; height: 45px; border: none; outline: none; background: transparent;
             padding-left: 40px; padding-right: 45px; font-size: 16px; box-sizing: border-box;
@@ -46,13 +46,11 @@
         #custom-search-box.expanded input { opacity: 1; pointer-events: auto; }
         #custom-search-box input::placeholder { color: transparent; }
 
-        /* 🎯 v8.12 核心：跨裝置的輸入框觸控分離 */
+        /* 🎯 保留 v8.12 特色：跨裝置的輸入框觸控分離 */
         @media (max-width: 768px) {
-            /* 手機版：縮合時鎖死輸入框，防鍵盤彈出 */
             #custom-search-box:not(.expanded) input { pointer-events: none; }
         }
         @media (min-width: 769px) {
-            /* 桌機版：隨時可點擊，保證原生對焦 */
             #custom-search-box:not(.expanded) input { pointer-events: auto; cursor: pointer; }
         }
 
@@ -182,24 +180,29 @@
             }
         }
 
-        // 當輸入框原生獲得焦點時（桌機點擊，或手機展開後點擊文字框）
+        // 🎯 v8.13 核心：加入「交通管制」，分離 UI 渲染與鍵盤彈出
         input.addEventListener('focus', function() {
             if (!searchBox.classList.contains('expanded')) {
                 searchBox.classList.add('expanded');
                 clearBtn.style.display = 'block';
             }
-            syncDisplay();
-            renderList(this.value);
+            
+            // 1. 瞬間消除區間小字，給予即時視覺回饋
+            syncDisplay(); 
+            
+            // 2. 發放號碼牌：延遲 100 毫秒再去畫清單，讓系統有空檔把鍵盤推上來
+            setTimeout(() => {
+                renderList(input.value);
+            }, 100);
         });
 
-        // 🎯 v8.12 核心：專門處理手機版「點擊圓球只展開、出清單、防鍵盤」的邏輯
+        // 點擊圓球展開時 (沒有鍵盤干擾，可直接渲染)
         searchBox.addEventListener('click', function(e) {
             if (!this.classList.contains('expanded')) {
                 this.classList.add('expanded');
                 clearBtn.style.display = 'block';
                 syncDisplay();
                 renderList(input.value);
-                // 這裡絕對不調用 input.focus()，所以手機鍵盤絕對不會彈出來！
             }
         });
 
@@ -216,6 +219,7 @@
             const normalize = str => str ? str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') : '';
             const cleanKeyword = normalize(keyword);
 
+            // 保留 v8.9 的精確打擊：只搜名稱和拼音
             let matched = (keyword === '') ? [...allFeatures] : allFeatures.filter(f => {
                 const nameMatch = normalize(f.properties.name || "").includes(cleanKeyword);
                 const tailoMatch = normalize(f.properties.tailo || "").includes(cleanKeyword);
@@ -296,6 +300,7 @@
             } else { dropdown.style.display = 'none'; }
         }
 
+        // 當正在打字時，鍵盤已經彈出，所以不需延遲，直接同步渲染
         input.oninput = function() { 
             if (this.value !== activeRouteName) { activeRouteName = ''; activeRouteSection = ''; }
             syncDisplay();
@@ -310,8 +315,6 @@
                 syncDisplay(); 
                 renderList('');
                 if(geojsonLayer) geojsonLayer.setStyle({ color: "#ff7800", weight: 4, opacity: 0.8 }); 
-                
-                // 桌機版清除後保持對焦
                 if (window.innerWidth > 768) input.focus(); 
             } else {
                 searchBox.classList.remove('expanded');
