@@ -42,14 +42,15 @@
 
         #custom-search-box input {
             width: 100%; height: 45px; border: none; outline: none; background: transparent;
-            padding-left: 40px; padding-right: 35px; font-size: 16px; box-sizing: border-box;
+            padding-left: 40px; padding-right: 45px; /* 稍微增加右側留白，避免字疊到按鈕 */
+            font-size: 16px; box-sizing: border-box;
         }
 
-        /* ⓧ 按鈕 */
+        /* 🎯 ⓧ 按鈕 (v7.4 解決胖手指問題：隱形熱區擴大到 45x45px) */
         #clearBtn {
-            position: absolute; right: 10px; top: 12px; font-size: 20px; color: #999;
-            cursor: pointer; display: none; z-index: 1002; width: 20px; height: 20px;
-            line-height: 18px; text-align: center;
+            position: absolute; right: 0; top: 0; font-size: 22px; color: #999;
+            cursor: pointer; display: none; z-index: 1002; 
+            width: 45px; height: 45px; line-height: 45px; text-align: center;
         }
         #clearBtn:hover { color: #333; }
         #custom-search-box:not(.expanded) #clearBtn { display: none !important; }
@@ -220,7 +221,6 @@
             if (matched.length > 0) {
                 dropdown.style.display = 'block';
 
-                // 👇 v7.3 核心邏輯：在未輸入關鍵字時，於清單最頂部加入「隨機探索」按鈕
                 if (keyword === '' && allFeatures.length > 0) {
                     const randomItem = document.createElement('div');
                     randomItem.className = 'search-item random-item';
@@ -228,11 +228,9 @@
                     
                     randomItem.onclick = (e) => {
                         e.stopPropagation();
-                        // 🎯 修正：點擊後僅收合選單與鍵盤，保持搜尋列「展開」並顯示名稱
                         dropdown.style.display = 'none';
                         input.blur();
 
-                        // 抽選路線並套用動畫
                         const randomIndex = Math.floor(Math.random() * allFeatures.length);
                         const randomFeature = allFeatures[randomIndex];
                         const lineName = randomFeature.properties.name || '未命名';
