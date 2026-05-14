@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>古今鐵道營業線 HGIS 查詢系統 v8.10</title>
+    <title>古今鐵道營業線 HGIS 查詢系統 v8.11</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
@@ -172,29 +172,23 @@
             }
         }
 
-        // 🎯 v8.10：觸控預判，手指剛碰到螢幕就先展開，爭取時間
-        searchBox.addEventListener('touchstart', function() {
-            if (!this.classList.contains('expanded')) {
-                this.classList.add('expanded');
-                clearBtn.style.display = 'block';
-            }
-        }, { passive: true });
-
+        // 🎯 v8.11：絕對同步連動！只要對焦，就立刻展開與渲染
         input.addEventListener('focus', function() {
-            if (!searchBox.classList.contains('expanded')) {
-                searchBox.classList.add('expanded');
-                clearBtn.style.display = 'block';
-            }
-            syncDisplay(); // 瞬間清除區間小字，準備輸入
-            
-            // 🎯 v8.10：非同步延遲渲染，將 50 毫秒的黃金時間讓給瀏覽器去彈出鍵盤
-            setTimeout(() => {
-                renderList(this.value);
-            }, 50);
+            searchBox.classList.add('expanded');
+            clearBtn.style.display = 'block';
+            syncDisplay(); 
+            renderList(this.value); // 零延遲，直接出清單！
         });
 
         input.addEventListener('blur', function() {
             syncDisplay(); 
+        });
+
+        // 🎯 v8.11：點擊圓球容器的任何地方，強制將瀏覽器焦點轉移給文字框
+        searchBox.addEventListener('click', function(e) {
+            if (document.activeElement !== input) {
+                input.focus(); 
+            }
         });
 
         function renderList(val) {
@@ -307,8 +301,6 @@
                 this.style.display = 'none';
             }
         };
-
-        searchBox.onclick = function(e) { input.focus(); };
 
         document.addEventListener('click', function(e) {
             if (!searchBox.contains(e.target)) {
