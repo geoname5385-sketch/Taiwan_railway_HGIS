@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>古今鐵道營業線 HGIS 查詢系統 v8.9</title>
+    <title>古今鐵道營業線 HGIS 查詢系統 v8.10</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
@@ -95,7 +95,6 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     
     <script>
-        // 1. 初始化地圖
         const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' });
         const sinica1904 = L.tileLayer('https://gis.sinica.edu.tw/tileserver/file-exists.php?img=JM20K_1904-jpg-{z}-{x}-{y}', { maxZoom: 18, opacity: 0.85 });
         const myRenderer = L.canvas({ tolerance: 15 }); 
@@ -109,7 +108,6 @@
         let activeRouteName = '';
         let activeRouteSection = '';
 
-        // 2. 讀取資料
         fetch('data.json')
             .then(response => response.json())
             .then(rawData => {
@@ -174,13 +172,25 @@
             }
         }
 
+        // 🎯 v8.10：觸控預判，手指剛碰到螢幕就先展開，爭取時間
+        searchBox.addEventListener('touchstart', function() {
+            if (!this.classList.contains('expanded')) {
+                this.classList.add('expanded');
+                clearBtn.style.display = 'block';
+            }
+        }, { passive: true });
+
         input.addEventListener('focus', function() {
             if (!searchBox.classList.contains('expanded')) {
                 searchBox.classList.add('expanded');
                 clearBtn.style.display = 'block';
             }
-            syncDisplay();
-            renderList(this.value);
+            syncDisplay(); // 瞬間清除區間小字，準備輸入
+            
+            // 🎯 v8.10：非同步延遲渲染，將 50 毫秒的黃金時間讓給瀏覽器去彈出鍵盤
+            setTimeout(() => {
+                renderList(this.value);
+            }, 50);
         });
 
         input.addEventListener('blur', function() {
@@ -196,7 +206,6 @@
             const normalize = str => str ? str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') : '';
             const cleanKeyword = normalize(keyword);
 
-            // 🎯 v8.9 核心修正：還原搜尋邏輯，不再搜尋 section
             let matched = (keyword === '') ? [...allFeatures] : allFeatures.filter(f => {
                 const nameMatch = normalize(f.properties.name || "").includes(cleanKeyword);
                 const tailoMatch = normalize(f.properties.tailo || "").includes(cleanKeyword);
